@@ -59,16 +59,33 @@ const tests: Test[] = [
   },
 
   {
-    description: 'String',
+    description: 'Reserved keywords',
     input: `
       BEGIN
-        "lorem ipsum"
       END
+      IF
+      ELSE
+      WHILE
+      UNTIL
     `,
     output: [
       { type: 'BEGIN', value: 'BEGIN' },
-      { type: 'STRING', value: 'lorem ipsum' },
       { type: 'END', value: 'END' },
+      { type: 'IF', value: 'IF' },
+      { type: 'ELSE', value: 'ELSE' },
+      { type: 'WHILE', value: 'WHILE' },
+      { type: 'UNTIL', value: 'UNTIL' },
+      { type: 'EOF', value: 'EOF' },
+    ],
+  },
+
+  {
+    description: 'String',
+    input: `
+      "lorem ipsum"
+    `,
+    output: [
+      { type: 'STRING', value: 'lorem ipsum' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -76,16 +93,12 @@ const tests: Test[] = [
   {
     description: 'Int',
     input: `
-      BEGIN
-        13
-        -1
-      END
+      13
+      -1
     `,
     output: [
-      { type: 'BEGIN', value: 'BEGIN' },
       { type: 'INT', value: '13' },
       { type: 'INT', value: '-1' },
-      { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -93,16 +106,10 @@ const tests: Test[] = [
   {
     description: 'Assignment',
     input: `
-      BEGIN
-        X <- 1
-      END
+      <-
     `,
     output: [
-      { type: 'BEGIN', value: 'BEGIN' },
-      { type: 'ID', value: 'X' },
       { type: 'ASSIGN', value: '<-' },
-      { type: 'INT', value: '1' },
-      { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -110,32 +117,16 @@ const tests: Test[] = [
   {
     description: 'Arithmetic operators',
     input: `
-      BEGIN
-        1 + 2
-        1 - 2
-        1 - -2
-        1 * 2
-        1 / 2
-      END
+      +
+      -
+      *
+      /
     `,
     output: [
-      { type: 'BEGIN', value: 'BEGIN' },
-      { type: 'INT', value: '1' },
       { type: 'PLUS', value: '+' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'MINUS', value: '-' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
-      { type: 'MINUS', value: '-' },
-      { type: 'INT', value: '-2' },
-      { type: 'INT', value: '1' },
       { type: 'ASTERISK', value: '*' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'SLASH', value: '/' },
-      { type: 'INT', value: '2' },
-      { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -143,36 +134,20 @@ const tests: Test[] = [
   {
     description: 'Relational operators',
     input: `
-      BEGIN
-        1 < 2
-        1 <= 2
-        1 = 2
-        1 >= 2
-        1 > 2
-        1 <> 2
-      END
+      <
+      <=
+      =
+      >=
+      >
+      <>
     `,
     output: [
-      { type: 'BEGIN', value: 'BEGIN' },
-      { type: 'INT', value: '1' },
       { type: 'LT', value: '<' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'LTE', value: '<=' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'EQ', value: '=' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'GTE', value: '>=' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'GT', value: '>' },
-      { type: 'INT', value: '2' },
-      { type: 'INT', value: '1' },
       { type: 'NEQ', value: '<>' },
-      { type: 'INT', value: '2' },
-      { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -180,72 +155,18 @@ const tests: Test[] = [
   {
     description: 'Unary operators',
     input: `
-      BEGIN
-        ~1
-        ~ 1
-        #2
-        # 2
-      END
+      ~
+      #
     `,
     output: [
-      { type: 'BEGIN', value: 'BEGIN' },
       { type: 'TILDE', value: '~' },
-      { type: 'INT', value: '1' },
-      { type: 'TILDE', value: '~' },
-      { type: 'INT', value: '1' },
       { type: 'HASH', value: '#' },
-      { type: 'INT', value: '2' },
-      { type: 'HASH', value: '#' },
-      { type: 'INT', value: '2' },
-      { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
 
   {
-    description: 'Conditionals',
-    input: `
-      BEGIN
-        IF X < 1
-          1
-        ELSE
-          2
-        END
-      END
-    `,
-    output: [
-      { type: 'BEGIN', value: 'BEGIN' },
-      { type: 'IF', value: 'IF' },
-      { type: 'ID', value: 'X' },
-      { type: 'LT', value: '<' },
-      { type: 'INT', value: '1' },
-      { type: 'INT', value: '1' },
-      { type: 'ELSE', value: 'ELSE' },
-      { type: 'INT', value: '2' },
-      { type: 'END', value: 'END' },
-      { type: 'END', value: 'END' },
-      { type: 'EOF', value: 'EOF' },
-    ],
-  },
-
-  // It's not responsibility of the lexer to check the program structure
-  {
-    description: 'Nonsense sequence of valid tokens',
-    input: `
-      END
-      BEGIN
-      "str"
-    `,
-    output: [
-      { type: 'END', value: 'END' },
-      { type: 'BEGIN', value: 'BEGIN' },
-      { type: 'STRING', value: 'str' },
-      { type: 'EOF', value: 'EOF' },
-    ],
-  },
-
-  {
-    description: 'Throws on unexpected characters',
+    description: 'Throws on unexpected characters (multiple lines)',
     input: `/*
         comment
       */
@@ -257,7 +178,7 @@ const tests: Test[] = [
   },
 
   {
-    description: 'Throws on unexpected characters 2',
+    description: 'Throws on unexpected characters (single line)',
     input: '"text" %',
     output: new Error('Unexpected char "%" at line 1 column 7'),
   },
