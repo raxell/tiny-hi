@@ -78,11 +78,13 @@ const tests: Test[] = [
     input: `
       BEGIN
         13
+        -1
       END
     `,
     output: [
       { type: 'BEGIN', value: 'BEGIN' },
       { type: 'INT', value: '13' },
+      { type: 'INT', value: '-1' },
       { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
     ],
@@ -111,6 +113,7 @@ const tests: Test[] = [
       BEGIN
         1 + 2
         1 - 2
+        1 - -2
         1 * 2
         1 / 2
       END
@@ -123,6 +126,9 @@ const tests: Test[] = [
       { type: 'INT', value: '1' },
       { type: 'MINUS', value: '-' },
       { type: 'INT', value: '2' },
+      { type: 'INT', value: '1' },
+      { type: 'MINUS', value: '-' },
+      { type: 'INT', value: '-2' },
       { type: 'INT', value: '1' },
       { type: 'ASTERISK', value: '*' },
       { type: 'INT', value: '2' },
@@ -165,6 +171,31 @@ const tests: Test[] = [
       { type: 'INT', value: '2' },
       { type: 'INT', value: '1' },
       { type: 'NEQ', value: '<>' },
+      { type: 'INT', value: '2' },
+      { type: 'END', value: 'END' },
+      { type: 'EOF', value: 'EOF' },
+    ],
+  },
+
+  {
+    description: 'Unary operators',
+    input: `
+      BEGIN
+        ~1
+        ~ 1
+        #2
+        # 2
+      END
+    `,
+    output: [
+      { type: 'BEGIN', value: 'BEGIN' },
+      { type: 'TILDE', value: '~' },
+      { type: 'INT', value: '1' },
+      { type: 'TILDE', value: '~' },
+      { type: 'INT', value: '1' },
+      { type: 'HASH', value: '#' },
+      { type: 'INT', value: '2' },
+      { type: 'HASH', value: '#' },
       { type: 'INT', value: '2' },
       { type: 'END', value: 'END' },
       { type: 'EOF', value: 'EOF' },
@@ -222,25 +253,13 @@ const tests: Test[] = [
         "text" %
       END
     `,
-    // prettier-ignore
-    output: new Error([
-      'Unexpected char "%" at line 5 column 16',
-      // '          BEGIN',
-      // '            "text" %',
-      // '                   ^',
-      // '          END',
-    ].join('\n')),
+    output: new Error('Unexpected char "%" at line 5 column 16'),
   },
 
   {
     description: 'Throws on unexpected characters 2',
     input: '"text" %',
-    // prettier-ignore
-    output: new Error([
-      'Unexpected char "%" at line 1 column 7',
-      // '    "text" %',
-      // '           ^',
-    ].join('\n')),
+    output: new Error('Unexpected char "%" at line 1 column 7'),
   },
 ]
 

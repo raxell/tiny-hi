@@ -16,6 +16,7 @@ export type Token = {
     | 'ASSIGN'
     | 'PLUS'
     | 'MINUS'
+    | 'TILDE'
     | 'ASTERISK'
     | 'SLASH'
     | 'HASH'
@@ -66,6 +67,11 @@ export const Lexer = (input: string) => {
   const consumeInt = () => {
     let int = ''
 
+    if (currentChar === '-') {
+      int += currentChar
+      consume()
+    }
+
     while (/[0-9]/.test(currentChar)) {
       int += currentChar
       consume()
@@ -74,6 +80,7 @@ export const Lexer = (input: string) => {
     return int
   }
 
+  // @TODO: use the correct set of characters
   const consumeId = () => {
     let id = ''
 
@@ -137,19 +144,6 @@ export const Lexer = (input: string) => {
     throw new Error(
       `Unexpected char ${JSON.stringify(currentChar)} at line ${line} column ${column - 1}`,
     )
-    // const lines = input.split('\n')
-
-    // const errorMessage = [
-    //   `Unexpected char ${JSON.stringify(currentChar)} at line ${line} column ${column - 1}`,
-    //   `${lines[line - 2] !== undefined ? `    ${lines[line - 2]}` : ''}`,
-    //   `    ${lines[line - 1]}`,
-    //   `    ${' '.repeat(column - 2)}^`,
-    //   `${lines[line] !== undefined ? `    ${lines[line]}` : ''}`,
-    // ]
-    //   .join('\n')
-    //   .trim()
-
-    // throw new Error(errorMessage)
   }
 
   return {
@@ -168,16 +162,44 @@ export const Lexer = (input: string) => {
           break
         }
 
+        if (currentChar === '#') {
+          consume()
+
+          return pushAndTop({ type: 'HASH', value: '#' })
+        }
+
+        if (currentChar === '(') {
+          consume()
+
+          return pushAndTop({ type: 'LPAREN', value: '(' })
+        }
+
+        if (currentChar === ')') {
+          consume()
+
+          return pushAndTop({ type: 'RPAREN', value: ')' })
+        }
+
         if (currentChar === '+') {
           consume()
 
           return pushAndTop({ type: 'PLUS', value: '+' })
         }
 
+        if (/[0-9]/.test(currentChar) || (currentChar === '-' && /[0-9]/.test(peek()))) {
+          return pushAndTop({ type: 'INT', value: consumeInt() })
+        }
+
         if (currentChar === '-') {
           consume()
 
           return pushAndTop({ type: 'MINUS', value: '-' })
+        }
+
+        if (currentChar === '~') {
+          consume()
+
+          return pushAndTop({ type: 'TILDE', value: '~' })
         }
 
         if (currentChar === '*') {
@@ -236,10 +258,6 @@ export const Lexer = (input: string) => {
           consume()
 
           return pushAndTop({ type: 'GT', value: '>' })
-        }
-
-        if (/[0-9]/.test(currentChar)) {
-          return pushAndTop({ type: 'INT', value: consumeInt() })
         }
 
         if (currentChar === '"') {
