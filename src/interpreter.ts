@@ -1,4 +1,7 @@
-import { Node } from './parser'
+import { ProgramNode, Node } from './parser'
+import { globalScopeName, semanticAnalyzer } from './semanticAnalyzer'
+
+const maximumCallStack = 100
 
 const binaryOp = {
   ADD: (left: number, right: number) => left + right,
@@ -7,19 +10,48 @@ const binaryOp = {
   DIV: (left: number, right: number) => Math.trunc(left / right),
 } as const
 
-export const Interpreter = (ast: Node) => {
-  const store = new Map<string, any>()
+type StackFrame = { name: string; members: Map<string, any> }
+
+export const Interpreter = (ast: ProgramNode) => {
+  const scopes = semanticAnalyzer(ast)
+  const callStack: StackFrame[] = []
+
+  const getCurrentStackFrame = () => callStack.slice(-1)[0]
 
   const evaluate = (node: Node): unknown => {
     switch (node.type) {
       case 'Program':
         return evaluate(node.block)
 
+      case 'FunctionCall':
+        if (callStack.length > maximumCallStack) {
+          throw new Error('Maximum call stack exceeded')
+        }
+        const { formalParams, astNode } = scopes.get(node.name)!
+        const activationRecord = { name: node.name, members: new Map() }
+
+        node.actualParams.forEach((value, index) => {
+          activationRecord.members.set(formalParams[index], value)
+        })
+
+        callStack.push(activationRecord)
+        evaluate(astNode)
+        callStack.pop()
+
+        return
+
       case 'FunctionDefinition':
-        return node.statements.forEach((statement) => evaluate(statement))
+        callStack.push({ name: node.name, members: new Map() })
+        node.statements
+          // Functions definitions must be executed only when called
+          .filter((statement) => statement.type !== 'FunctionDefinition')
+          .forEach((statement) => evaluate(statement))
+        callStack.pop()
+
+        return node.statements.slice(-1)[0]
 
       case 'Assignment':
-        store.set(node.left, evaluate(node.right))
+        getCurrentStackFrame().members.set(node.left, evaluate(node.right))
         return
 
       case 'OutputExpression':
@@ -27,11 +59,7 @@ export const Interpreter = (ast: Node) => {
         return
 
       case 'Var':
-        if (!store.has(node.name)) {
-          throw new Error(`Undefined variable "${node.name}"`)
-        }
-
-        return store.get(node.name)
+        return getCurrentStackFrame().members.get(node.name)
 
       case 'Int':
         return node.value
@@ -70,5 +98,5 @@ export const Interpreter = (ast: Node) => {
     }
   }
 
-  evaluate(ast)
+  evaluate(scopes.get(globalScopeName)!.astNode)
 }

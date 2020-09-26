@@ -9,7 +9,13 @@ const execute = (program: string) => {
   Interpreter(Parser(program))
 }
 
-const programs = [
+type Test = {
+  description: string
+  input: string
+  output: string | Error
+}
+
+const tests: Test[] = [
   // Basic arithmetic
   {
     description: '1',
@@ -326,8 +332,6 @@ const programs = [
   },
 
   // Nested blocks
-  // @TODO: this test is incorrect, it should produce no output since there are no function calls.
-  // Will be fixed once function calls will be implemented.
   {
     description: 'Nested blocks',
     input: `
@@ -340,7 +344,7 @@ const programs = [
         END
       END
     `,
-    output: '1\n2',
+    output: '',
   },
 
   // Variables
@@ -354,7 +358,74 @@ const programs = [
     `,
     output: '2 3 2',
   },
-] as const
+
+  // Function calls
+  {
+    description: 'Function call without arguments',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          7
+        END
+        F()
+      END
+    `,
+    output: '7',
+  },
+
+  // Undefined symbols
+  {
+    description: 'Undefined variables',
+    input: `
+      BEGIN PROG
+        X
+      END
+    `,
+    output: new Error('Undefined variable "X"'),
+  },
+
+  {
+    description: 'Undefined function',
+    input: `
+      BEGIN PROG
+        X()
+      END
+    `,
+    output: new Error('Undefined function "X"'),
+  },
+
+  // Function already defined
+  {
+    description: 'Function already defined',
+    input: `
+      BEGIN PROG
+        BEGIN A
+          BEGIN B
+            1
+          END
+        END
+        BEGIN B
+          2
+        END
+      END
+    `,
+    output: new Error('Function "B" has already been defined'),
+  },
+
+  // Maximum call stack
+  {
+    description: 'Maximum call stack',
+    input: `
+      BEGIN PROG
+        BEGIN A
+          A()
+        END
+        A()
+      END
+    `,
+    output: new Error('Maximum call stack exceeded'),
+  },
+]
 
 beforeEach(() => {
   output = []
@@ -364,10 +435,17 @@ afterAll(() => {
   spy.mockRestore()
 })
 
-for (let program of programs) {
-  it(program.description, () => {
-    execute(program.input)
+for (let test of tests) {
+  it(test.description, () => {
+    if (test.output instanceof Error) {
+      expect(() => {
+        execute(test.input)
+      }).toThrow(test.output)
 
-    expect(output.join('\n')).toBe(program.output)
+      return
+    }
+
+    execute(test.input)
+    expect(output.join('\n')).toBe(test.output)
   })
 }

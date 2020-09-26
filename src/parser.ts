@@ -1,18 +1,25 @@
 import { Lexer, Token } from './lexer'
 
-type ProgramNode = { type: 'Program'; block: FunctionDefinitionNode }
-type FunctionDefinitionNode = { type: 'FunctionDefinition'; name: string; statements: Statement[] }
+export type ProgramNode = { type: 'Program'; block: FunctionDefinitionNode }
+type FunctionDefinitionNode = {
+  type: 'FunctionDefinition'
+  name: string
+  formalParams: string[]
+  statements: Statement[]
+}
 type AssignmentNode = { type: 'Assignment'; left: string; right: Node }
 type OutputExpressionNode = { type: 'OutputExpression'; expression: Node }
-type Statement = FunctionDefinitionNode | AssignmentNode | OutputExpressionNode
+type Statement = FunctionDefinitionNode | AssignmentNode | OutputExpressionNode | FunctionCallNode
 type VectorNode = { type: 'Vector'; elements: Node[] }
 type VarNode = { type: 'Var'; name: string }
+type FunctionCallNode = { type: 'FunctionCall'; name: string; actualParams: Node[] }
 type IntNode = { type: 'Int'; value: number }
 type UnaryOpNode = { type: 'UnaryOp'; op: 'LENGTH' | 'NEGATION'; value: VectorNode }
 type BinaryOpNode = { type: 'BinaryOp'; op: 'ADD' | 'SUB' | 'MUL' | 'DIV'; left: Node; right: Node }
 
 export type Node =
   | ProgramNode
+  | FunctionCallNode
   | FunctionDefinitionNode
   | AssignmentNode
   | OutputExpressionNode
@@ -34,15 +41,16 @@ export type Node =
  * program: functionDefinition NEWLINE
  * functionDefinition: BEGIN name NEWLINE statementList END
  * statementList: (statement NEWLINE)+
- * statement: functionDefinition | assignment | expression
+ * statement: functionDefinition | funCall | assignment | expression
  * assignment: ID ASSIGN expression
  * expression: intExpression
  * intExpression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
  * factor: MINUS vec | HASH vec | LPAREN intexpr RPAREN | vec
  * vector: element element*
- * element: INT | var | fun | factor
+ * element: INT | var | funCall | factor
  * var: ID (LSQUARE intExpression RSQUARE)?
+ * funCall: ID LPAREN RPAREN
  */
 export const Parser = (input: string) => {
   const lexer = Lexer(input)
@@ -63,6 +71,15 @@ export const Parser = (input: string) => {
     }
 
     currentToken = lexer.nextToken()
+  }
+
+  const funCall = () => {
+    const name = currentToken.value
+    consume('ID')
+    consume('LPAREN')
+    consume('RPAREN')
+
+    return { type: 'FunctionCall', name, actualParams: [] as Node[] } as const
   }
 
   const element = () => {
@@ -164,6 +181,10 @@ export const Parser = (input: string) => {
       return assignment()
     }
 
+    if (currentToken.type === 'ID' && lexer.peek().type === 'LPAREN') {
+      return funCall()
+    }
+
     return { type: 'OutputExpression', expression: expression() }
   }
 
@@ -187,7 +208,7 @@ export const Parser = (input: string) => {
     const statements = statementList()
     consume('END')
 
-    return { type: 'FunctionDefinition', name, statements }
+    return { type: 'FunctionDefinition', name, formalParams: [], statements }
   }
 
   const program = (): ProgramNode => {

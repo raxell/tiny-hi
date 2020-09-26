@@ -12,6 +12,7 @@ test('Returns an AST', () => {
     block: {
       type: 'FunctionDefinition',
       name: 'PROG',
+      formalParams: [],
       statements: [
         {
           type: 'OutputExpression',
