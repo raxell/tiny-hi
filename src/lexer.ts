@@ -35,6 +35,10 @@ export type Token = {
   value: string
 }
 
+const letterRegex = /[A-Z]/
+const digitRegex = /[0-9]/
+const alphanumRegex = /[A-Z0-9_]/
+
 /**
  * Lazy lexer, consumes the tokens on demand.
  */
@@ -80,11 +84,15 @@ export const Lexer = (input: string) => {
     return int
   }
 
-  // @TODO: use the correct set of characters
   const consumeId = () => {
     let id = ''
 
-    while (/[a-zA-Z0-9]/.test(currentChar)) {
+    if (letterRegex.test(currentChar)) {
+      id += currentChar
+      consume()
+    }
+
+    while (alphanumRegex.test(currentChar)) {
       id += currentChar
       consume()
     }
@@ -142,7 +150,7 @@ export const Lexer = (input: string) => {
 
   const unexpectedCharacterError = () => {
     throw new Error(
-      `Unexpected char ${JSON.stringify(currentChar)} at line ${line} column ${column - 1}`,
+      `Unexpected char ${JSON.stringify(currentChar)} at line ${line} column ${column}`,
     )
   }
 
@@ -160,6 +168,23 @@ export const Lexer = (input: string) => {
 
         if (currentChar === undefined) {
           break
+        }
+
+        if (digitRegex.test(currentChar) || (currentChar === '-' && digitRegex.test(peek()))) {
+          return pushAndTop({ type: 'INT', value: consumeInt() })
+        }
+
+        if (currentChar === '"') {
+          return pushAndTop({ type: 'STRING', value: consumeString() })
+        }
+
+        if (letterRegex.test(currentChar)) {
+          const id = consumeId()
+
+          return pushAndTop({
+            type: reservedKeywords.includes(id) ? (id as Token['type']) : 'ID',
+            value: id,
+          })
         }
 
         if (currentChar === '#') {
@@ -184,10 +209,6 @@ export const Lexer = (input: string) => {
           consume()
 
           return pushAndTop({ type: 'PLUS', value: '+' })
-        }
-
-        if (/[0-9]/.test(currentChar) || (currentChar === '-' && /[0-9]/.test(peek()))) {
-          return pushAndTop({ type: 'INT', value: consumeInt() })
         }
 
         if (currentChar === '-') {
@@ -258,19 +279,6 @@ export const Lexer = (input: string) => {
           consume()
 
           return pushAndTop({ type: 'GT', value: '>' })
-        }
-
-        if (currentChar === '"') {
-          return pushAndTop({ type: 'STRING', value: consumeString() })
-        }
-
-        if (/[a-zA-Z0-9]/.test(currentChar)) {
-          const id = consumeId()
-
-          return pushAndTop({
-            type: reservedKeywords.includes(id) ? (id as Token['type']) : 'ID',
-            value: id,
-          })
         }
 
         unexpectedCharacterError()

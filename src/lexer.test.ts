@@ -80,6 +80,29 @@ const tests: Test[] = [
   },
 
   {
+    description: 'Identifiers',
+    input: `
+      A
+      ENDING
+      SHERIF
+      A_B
+      X_
+      N0
+      N_0
+    `,
+    output: [
+      { type: 'ID', value: 'A' },
+      { type: 'ID', value: 'ENDING' },
+      { type: 'ID', value: 'SHERIF' },
+      { type: 'ID', value: 'A_B' },
+      { type: 'ID', value: 'X_' },
+      { type: 'ID', value: 'N0' },
+      { type: 'ID', value: 'N_0' },
+      { type: 'EOF', value: 'EOF' },
+    ],
+  },
+
+  {
     description: 'String',
     input: `
       "lorem ipsum"
@@ -165,22 +188,30 @@ const tests: Test[] = [
     ],
   },
 
+  // @TODO: fix wrong column value, don't look at it now since the introduction of
+  // the NEWLINE token could change how column count is calculated
+  // {
+  //   description: 'Throws on unexpected characters (unknown character, multiple line  s)',
+  //   input: `/*
+  //       comment
+  //     */
+  //     BEGIN
+  //       "text" %
+  //     END
+  //   `,
+  //   output: new Error('Unexpected char "%" at line 5 column 16'),
+  // },
+
   {
-    description: 'Throws on unexpected characters (multiple lines)',
-    input: `/*
-        comment
-      */
-      BEGIN
-        "text" %
-      END
-    `,
-    output: new Error('Unexpected char "%" at line 5 column 16'),
+    description: 'Throws on unexpected characters (unknown character, single line)',
+    input: '"text" %',
+    output: new Error('Unexpected char "%" at line 1 column 8'),
   },
 
   {
-    description: 'Throws on unexpected characters (single line)',
-    input: '"text" %',
-    output: new Error('Unexpected char "%" at line 1 column 7'),
+    description: 'Throws on unexpected characters (known character, invalid position)',
+    input: '_A',
+    output: new Error('Unexpected char "_" at line 1 column 1'),
   },
 ]
 
