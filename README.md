@@ -29,3 +29,9 @@ Execute custom programs by printing them to stdin:
 ```
 npm start
 ```
+
+Use `--debug` to also print debugging informations (tokens, AST):
+
+```
+npm start -- --debug
+```
