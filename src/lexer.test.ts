@@ -47,13 +47,34 @@ const tests: Test[] = [
 
   {
     description: 'Ignores leading and trailing whitespaces',
-    input: `
+    input: [
+      ' ',
+      `
       BEGIN
       END
      `,
+    ].join(''),
     output: [
       { type: 'BEGIN', value: 'BEGIN' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'END', value: 'END' },
+      { type: 'NEWLINE', value: '\n' }, // NB: this should not be considered a trailing whitespace
+      { type: 'EOF', value: 'EOF' },
+    ],
+  },
+
+  {
+    description: 'Ignores subsequent newline characters',
+    input: `
+      BEGIN
+
+      END
+    `,
+    output: [
+      { type: 'BEGIN', value: 'BEGIN' },
+      { type: 'NEWLINE', value: '\n' },
+      { type: 'END', value: 'END' },
+      { type: 'NEWLINE', value: '\n' }, // NB: this should not be considered a trailing whitespace
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -70,11 +91,17 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'BEGIN', value: 'BEGIN' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'END', value: 'END' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'IF', value: 'IF' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ELSE', value: 'ELSE' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'WHILE', value: 'WHILE' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'UNTIL', value: 'UNTIL' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -92,12 +119,19 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'ID', value: 'A' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'ENDING' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'SHERIF' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'A_B' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'X_' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'N0' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'N_0' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -109,6 +143,7 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'STRING', value: 'lorem ipsum' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -121,7 +156,9 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'INT', value: '13' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'INT', value: '-1' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -133,6 +170,7 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'ASSIGN', value: '<-' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -147,9 +185,13 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'PLUS', value: '+' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'MINUS', value: '-' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'ASTERISK', value: '*' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'SLASH', value: '/' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -166,11 +208,17 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'LT', value: '<' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'LTE', value: '<=' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EQ', value: '=' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'GTE', value: '>=' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'GT', value: '>' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'NEQ', value: '<>' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
@@ -183,24 +231,24 @@ const tests: Test[] = [
     `,
     output: [
       { type: 'TILDE', value: '~' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'HASH', value: '#' },
+      { type: 'NEWLINE', value: '\n' },
       { type: 'EOF', value: 'EOF' },
     ],
   },
 
-  // @TODO: fix wrong column value, don't look at it now since the introduction of
-  // the NEWLINE token could change how column count is calculated
-  // {
-  //   description: 'Throws on unexpected characters (unknown character, multiple line  s)',
-  //   input: `/*
-  //       comment
-  //     */
-  //     BEGIN
-  //       "text" %
-  //     END
-  //   `,
-  //   output: new Error('Unexpected char "%" at line 5 column 16'),
-  // },
+  {
+    description: 'Throws on unexpected characters (unknown character, multiple line  s)',
+    input: `/*
+        comment
+      */
+      BEGIN
+        "text" %
+      END
+    `,
+    output: new Error('Unexpected char "%" at line 5 column 16'),
+  },
 
   {
     description: 'Throws on unexpected characters (unknown character, single line)',

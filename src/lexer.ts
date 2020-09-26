@@ -7,7 +7,7 @@ export type Token = {
     | 'ELSE'
     | 'WHILE'
     | 'UNTIL'
-    | 'NEWLINE' // TODO: figure out if this is required
+    | 'NEWLINE'
     | 'LPAREN'
     | 'RPAREN'
     | 'LSQUARE'
@@ -117,8 +117,15 @@ export const Lexer = (input: string) => {
   const skipWhitespaces = () => {
     while (/\s/.test(currentChar)) {
       if (currentChar === '\n') {
+        const lastToken = tokens.slice(-1)[0]
+
+        // Don't push subsequent newline chars
+        if (lastToken && lastToken.type !== 'NEWLINE') {
+          tokens.push({ type: 'NEWLINE', value: '\n' })
+        }
+
         line += 1
-        column = 1
+        column = 0 // 0 since the next `consume` will "initialize" it to 1
       }
 
       consume()
