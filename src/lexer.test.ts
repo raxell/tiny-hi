@@ -276,3 +276,17 @@ for (let test of tests) {
     expect(tokenize(test.input)).toEqual(test.output)
   })
 }
+
+test('peek', () => {
+  const lexer = Lexer(`
+    X <- 1
+  `)
+
+  expect(lexer.nextToken()).toEqual({ type: 'ID', value: 'X' })
+  expect(lexer.peek()).toEqual({ type: 'ASSIGN', value: '<-' })
+  expect(lexer.tokens().slice(-1)[0]).toEqual({ type: 'ID', value: 'X' })
+  expect(lexer.peek()).toEqual({ type: 'ASSIGN', value: '<-' })
+  expect(lexer.tokens().slice(-1)[0]).toEqual({ type: 'ID', value: 'X' })
+  expect(lexer.nextToken()).toEqual({ type: 'ASSIGN', value: '<-' })
+  expect(lexer.nextToken()).toEqual({ type: 'INT', value: '1' })
+})

@@ -8,6 +8,8 @@ const binaryOp = {
 } as const
 
 export const Interpreter = (ast: Node) => {
+  const store = new Map<string, any>()
+
   const evaluate = (node: Node): unknown => {
     switch (node.type) {
       case 'Program':
@@ -16,9 +18,20 @@ export const Interpreter = (ast: Node) => {
       case 'FunctionDefinition':
         return node.statements.forEach((statement) => evaluate(statement))
 
+      case 'Assignment':
+        store.set(node.left, evaluate(node.right))
+        return
+
       case 'OutputExpression':
         console.log((evaluate(node.expression) as unknown[]).join(' '))
         return
+
+      case 'Var':
+        if (!store.has(node.name)) {
+          throw new Error(`Undefined variable "${node.name}"`)
+        }
+
+        return store.get(node.name)
 
       case 'Int':
         return node.value

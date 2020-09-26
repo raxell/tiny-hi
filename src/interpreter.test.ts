@@ -342,6 +342,18 @@ const programs = [
     `,
     output: '1\n2',
   },
+
+  // Variables
+  {
+    description: 'Variable assignment and reference',
+    input: `
+      BEGIN PROG
+        X <- 1
+        1 + X 2 X
+      END
+    `,
+    output: '2 3 2',
+  },
 ] as const
 
 beforeEach(() => {

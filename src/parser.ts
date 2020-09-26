@@ -2,9 +2,11 @@ import { Lexer, Token } from './lexer'
 
 type ProgramNode = { type: 'Program'; block: FunctionDefinitionNode }
 type FunctionDefinitionNode = { type: 'FunctionDefinition'; name: string; statements: Statement[] }
-type Statement = OutputExpressionNode | FunctionDefinitionNode
+type AssignmentNode = { type: 'Assignment'; left: string; right: Node }
 type OutputExpressionNode = { type: 'OutputExpression'; expression: Node }
+type Statement = FunctionDefinitionNode | AssignmentNode | OutputExpressionNode
 type VectorNode = { type: 'Vector'; elements: Node[] }
+type VarNode = { type: 'Var'; name: string }
 type IntNode = { type: 'Int'; value: number }
 type UnaryOpNode = { type: 'UnaryOp'; op: 'LENGTH' | 'NEGATION'; value: VectorNode }
 type BinaryOpNode = { type: 'BinaryOp'; op: 'ADD' | 'SUB' | 'MUL' | 'DIV'; left: Node; right: Node }
@@ -12,7 +14,9 @@ type BinaryOpNode = { type: 'BinaryOp'; op: 'ADD' | 'SUB' | 'MUL' | 'DIV'; left:
 export type Node =
   | ProgramNode
   | FunctionDefinitionNode
+  | AssignmentNode
   | OutputExpressionNode
+  | VarNode
   | IntNode
   | VectorNode
   | UnaryOpNode
@@ -24,16 +28,21 @@ export type Node =
  * Grammar
  * -------
  *
+ * Doubts:
+ * - is `A[1] <- 2` a valid assignment expression?
+ *
  * program: functionDefinition NEWLINE
  * functionDefinition: BEGIN name NEWLINE statementList END
  * statementList: (statement NEWLINE)+
- * statement: expression | functionDefinition
+ * statement: functionDefinition | assignment | expression
+ * assignment: ID ASSIGN expression
  * expression: intExpression
  * intExpression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
  * factor: MINUS vec | HASH vec | LPAREN intexpr RPAREN | vec
  * vector: element element*
  * element: INT | var | fun | factor
+ * var: ID (LSQUARE intExpression RSQUARE)?
  */
 export const Parser = (input: string) => {
   const lexer = Lexer(input)
@@ -57,6 +66,13 @@ export const Parser = (input: string) => {
   }
 
   const element = () => {
+    if (currentToken.type === 'ID') {
+      const name = currentToken.value
+      consume('ID')
+
+      return { type: 'Var', name } as const
+    }
+
     if (currentToken.type === 'INT') {
       const value = Number(currentToken.value)
       consume('INT')
@@ -70,7 +86,7 @@ export const Parser = (input: string) => {
   const vector = (): VectorNode => {
     const elements = [element()]
 
-    while (['INT', 'TILDE', 'HASH', 'LPAREN'].includes(currentToken.type)) {
+    while (['ID', 'INT', 'TILDE', 'HASH', 'LPAREN'].includes(currentToken.type)) {
       elements.push(element())
     }
 
@@ -131,9 +147,21 @@ export const Parser = (input: string) => {
     return intExpression()
   }
 
+  const assignment = (): AssignmentNode => {
+    const id = currentToken
+    consume('ID')
+    consume('ASSIGN')
+
+    return { type: 'Assignment', left: id.value, right: expression() }
+  }
+
   const statement = (): Statement => {
     if (currentToken.type === 'BEGIN') {
       return functionDefinition()
+    }
+
+    if (currentToken.type === 'ID' && lexer.peek().type === 'ASSIGN') {
+      return assignment()
     }
 
     return { type: 'OutputExpression', expression: expression() }

@@ -45,6 +45,7 @@ const alphanumRegex = /[A-Z0-9_]/
 export const Lexer = (input: string) => {
   const reservedKeywords = ['BEGIN', 'END', 'IF', 'ELSE', 'WHILE', 'UNTIL']
   const tokens: Token[] = []
+  const peekedTokens: Token[] = []
 
   let pos = 0
   let line = 1
@@ -167,7 +168,29 @@ export const Lexer = (input: string) => {
   return {
     tokens: () => tokens,
 
-    nextToken: () => {
+    peek() {
+      const peekedToken = peekedTokens.slice(-1)[0]
+
+      if (peekedToken !== undefined) {
+        return peekedToken
+      }
+
+      const nextToken = this.nextToken()
+      peekedTokens.push(nextToken)
+      // `nextToken` also push into the stack, since we are not consuming the token let's remove it
+      tokens.pop()
+
+      return nextToken
+    },
+
+    nextToken() {
+      const peekedToken = peekedTokens.slice(-1)[0]
+
+      if (peekedToken !== undefined) {
+        peekedTokens.pop()
+        return pushAndTop(peekedToken)
+      }
+
       while (currentChar !== undefined) {
         const newlineToken = skipWhitespaces()
 
