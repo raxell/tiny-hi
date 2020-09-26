@@ -1,53 +1,361 @@
 import { Parser } from './parser'
 import { Interpreter } from './interpreter'
 
-const execute = (program: string) => {
-  const ast = Parser(program)
+let output: string[] = []
+// The interpreter prints to stdout, we have to intercept it to make assertions on the output
+const spy = jest.spyOn(console, 'log').mockImplementation((message) => output.push(message))
 
-  return Interpreter(ast)
+const execute = (program: string) => {
+  Interpreter(Parser(program))
 }
 
-test('Expressions', () => {
-  expect(execute('')).toBeNull()
+const programs = [
+  // Basic arithmetic
+  {
+    description: '1',
+    input: `
+      BEGIN PROG
+        1
+      END
+    `,
+    output: '1',
+  },
 
-  // Basic Arithmetic
-  expect(execute('1')).toBe('1')
-  expect(execute('1 + 2')).toBe('3')
-  expect(execute('1 - 2')).toBe('-1')
-  expect(execute('1 * 2')).toBe('2')
-  expect(execute('1 / 2')).toBe('0')
-  expect(execute('1 + 2 * 3')).toBe('7')
-  expect(execute('(1 + 2) * 3')).toBe('9')
+  {
+    description: '1 + 2',
+    input: `
+      BEGIN PROG
+        1 + 2
+      END
+    `,
+    output: '3',
+  },
+
+  {
+    description: '1 - 2',
+    input: `
+      BEGIN PROG
+        1 - 2
+      END
+    `,
+    output: '-1',
+  },
+
+  {
+    description: '1 * 2',
+    input: `
+      BEGIN PROG
+        1 * 2
+      END
+    `,
+    output: '2',
+  },
+
+  {
+    description: '1 / 2',
+    input: `
+      BEGIN PROG
+        1 / 2
+      END
+    `,
+    output: '0',
+  },
+
+  {
+    description: '1 + 2 * 3',
+    input: `
+      BEGIN PROG
+        1 + 2 * 3
+      END
+    `,
+    output: '7',
+  },
+
+  {
+    description: '(1 + 2) * 3',
+    input: `
+      BEGIN PROG
+        (1 + 2) * 3
+      END
+    `,
+    output: '9',
+  },
 
   // Length operator
-  expect(execute('#2')).toBe('1')
-  expect(execute('# 2')).toBe('1')
-  expect(execute('#(3 4)')).toBe('2')
-  expect(execute('#((3 4))')).toBe('2')
-  expect(execute('#9 8 7')).toBe('3')
-  expect(execute('# 9 8 7')).toBe('3')
+  {
+    description: '#2',
+    input: `
+      BEGIN PROG
+        #2
+      END
+    `,
+    output: '1',
+  },
+
+  {
+    description: '# 2',
+    input: `
+      BEGIN PROG
+        # 2
+      END
+    `,
+    output: '1',
+  },
+
+  {
+    description: '#(3 4)',
+    input: `
+      BEGIN PROG
+        #(3 4)
+      END
+    `,
+    output: '2',
+  },
+
+  {
+    description: '#((3 4))',
+    input: `
+      BEGIN PROG
+        #((3 4))
+      END
+    `,
+    output: '2',
+  },
+
+  {
+    description: '#9 8 7',
+    input: `
+      BEGIN PROG
+        #9 8 7
+      END
+    `,
+    output: '3',
+  },
+
+  {
+    description: '# 9 8 7',
+    input: `
+      BEGIN PROG
+        # 9 8 7
+      END
+    `,
+    output: '3',
+  },
 
   // Negation operator
-  expect(execute('~1')).toBe('-1')
-  expect(execute('~ 1')).toBe('-1')
-  expect(execute('~1 2 3')).toBe('-1 -2 -3')
-  expect(execute('~ 1 2 3')).toBe('-1 -2 -3')
-  expect(execute('~(1 2)')).toBe('-1 -2')
+  {
+    description: '~1',
+    input: `
+      BEGIN PROG
+        ~1
+      END
+    `,
+    output: '-1',
+  },
+
+  {
+    description: '~ 1',
+    input: `
+      BEGIN PROG
+        ~ 1
+      END
+    `,
+    output: '-1',
+  },
+
+  {
+    description: '~1 2 3',
+    input: `
+      BEGIN PROG
+        ~1 2 3
+      END
+    `,
+    output: '-1 -2 -3',
+  },
+
+  {
+    description: '~ 1 2 3',
+    input: `
+      BEGIN PROG
+        ~ 1 2 3
+      END
+    `,
+    output: '-1 -2 -3',
+  },
+
+  {
+    description: '~(1 2)',
+    input: `
+      BEGIN PROG
+        ~(1 2)
+      END
+    `,
+    output: '-1 -2',
+  },
 
   // Vector Arithmetic
-  expect(execute('1 + 1 2')).toBe('2 3')
-  expect(execute('1 - 1 2')).toBe('0 1')
-  expect(execute('2 * 1 2')).toBe('2 4')
-  expect(execute('2 / 1 2')).toBe('0 1')
-  expect(execute('1 2 + 2 3')).toBe('3 5')
-  expect(execute('1 2 + ~1 2')).toBe('0 0')
-  expect(execute('1 2 - 2 3')).toBe('-1 -1')
-  expect(execute('1 2 * 2 3')).toBe('2 6')
-  expect(execute('1 2 / 2 3')).toBe('0 0')
+  {
+    description: '1 + 1 2',
+    input: `
+      BEGIN PROG
+        1 + 1 2
+      END
+    `,
+    output: '2 3',
+  },
+
+  {
+    description: '1 - 1 2',
+    input: `
+      BEGIN PROG
+        1 - 1 2
+      END
+    `,
+    output: '0 1',
+  },
+
+  {
+    description: '2 * 1 2',
+    input: `
+      BEGIN PROG
+        2 * 1 2
+      END
+    `,
+    output: '2 4',
+  },
+
+  {
+    description: '2 / 1 2',
+    input: `
+      BEGIN PROG
+        2 / 1 2
+      END
+    `,
+    output: '0 1',
+  },
+
+  {
+    description: '1 2 + 2 3',
+    input: `
+      BEGIN PROG
+        1 2 + 2 3
+      END
+    `,
+    output: '3 5',
+  },
+
+  {
+    description: '1 2 + ~1 2',
+    input: `
+      BEGIN PROG
+        1 2 + ~1 2
+      END
+    `,
+    output: '0 0',
+  },
+
+  {
+    description: '1 2 - 2 3',
+    input: `
+      BEGIN PROG
+        -1 -1
+      END
+    `,
+    output: '-1 -1',
+  },
+
+  {
+    description: '1 2 * 2 3',
+    input: `
+      BEGIN PROG
+        1 2 * 2 3
+      END
+    `,
+    output: '2 6',
+  },
+
+  {
+    description: '1 2 / 2 3',
+    input: `
+      BEGIN PROG
+        1 2 / 2 3
+      END
+    `,
+    output: '0 0',
+  },
 
   // Mixed
-  expect(execute('1 + #2 3 * 4')).toBe('9')
-  expect(execute('1 + #~2 3 * 4')).toBe('9')
-  expect(execute('1 + #(2 3) * 4')).toBe('9')
-  expect(execute('1 + #2 (3 * 4)')).toBe('3')
+  {
+    description: '1 + #2 3 * 4',
+    input: `
+      BEGIN PROG
+        1 + #2 3 * 4
+      END
+    `,
+    output: '9',
+  },
+
+  {
+    description: '1 + #~2 3 * 4',
+    input: `
+      BEGIN PROG
+        1 + #~2 3 * 4
+      END
+    `,
+    output: '9',
+  },
+
+  {
+    description: '1 + #(2 3) * 4',
+    input: `
+      BEGIN PROG
+        1 + #(2 3) * 4
+      END
+    `,
+    output: '9',
+  },
+
+  {
+    description: '1 + #2 (3 * 4)',
+    input: `
+      BEGIN PROG
+        1 + #2 (3 * 4)
+      END
+    `,
+    output: '3',
+  },
+
+  // Nested blocks
+  // @TODO: this test is incorrect, it should produce no output since there are no function calls.
+  // Will be fixed once function calls will be implemented.
+  {
+    description: 'Nested blocks',
+    input: `
+      BEGIN PROG
+        BEGIN A
+          1
+        END
+        BEGIN B
+          2
+        END
+      END
+    `,
+    output: '1\n2',
+  },
+] as const
+
+beforeEach(() => {
+  output = []
 })
+
+afterAll(() => {
+  spy.mockRestore()
+})
+
+for (let program of programs) {
+  it(program.description, () => {
+    execute(program.input)
+
+    expect(output.join('\n')).toBe(program.output)
+  })
+}

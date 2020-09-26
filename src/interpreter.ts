@@ -11,7 +11,14 @@ export const Interpreter = (ast: Node) => {
   const evaluate = (node: Node): unknown => {
     switch (node.type) {
       case 'Program':
-        return node.expressions[0] ? evaluate(node.expressions[0]) : null
+        return evaluate(node.block)
+
+      case 'FunctionDefinition':
+        return node.statements.forEach((statement) => evaluate(statement))
+
+      case 'OutputExpression':
+        console.log((evaluate(node.expression) as unknown[]).join(' '))
+        return
 
       case 'Int':
         return node.value
@@ -50,15 +57,5 @@ export const Interpreter = (ast: Node) => {
     }
   }
 
-  const result = evaluate(ast)
-
-  if (typeof result === 'number') {
-    return String(result)
-  }
-
-  if (Array.isArray(result)) {
-    return result.join(' ')
-  }
-
-  return result
+  evaluate(ast)
 }

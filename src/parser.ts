@@ -1,12 +1,22 @@
 import { Lexer, Token } from './lexer'
 
-type ProgramNode = { type: 'Program'; expressions: Node[] }
+type ProgramNode = { type: 'Program'; block: FunctionDefinitionNode }
+type FunctionDefinitionNode = { type: 'FunctionDefinition'; name: string; statements: Statement[] }
+type Statement = OutputExpressionNode | FunctionDefinitionNode
+type OutputExpressionNode = { type: 'OutputExpression'; expression: Node }
 type VectorNode = { type: 'Vector'; elements: Node[] }
 type IntNode = { type: 'Int'; value: number }
 type UnaryOpNode = { type: 'UnaryOp'; op: 'LENGTH' | 'NEGATION'; value: VectorNode }
 type BinaryOpNode = { type: 'BinaryOp'; op: 'ADD' | 'SUB' | 'MUL' | 'DIV'; left: Node; right: Node }
 
-export type Node = ProgramNode | IntNode | VectorNode | UnaryOpNode | BinaryOpNode
+export type Node =
+  | ProgramNode
+  | FunctionDefinitionNode
+  | OutputExpressionNode
+  | IntNode
+  | VectorNode
+  | UnaryOpNode
+  | BinaryOpNode
 
 /**
  * Recursive descendant parser.
@@ -14,7 +24,11 @@ export type Node = ProgramNode | IntNode | VectorNode | UnaryOpNode | BinaryOpNo
  * Grammar
  * -------
  *
- * program: intExpression
+ * program: functionDefinition NEWLINE
+ * functionDefinition: BEGIN name NEWLINE statementList END
+ * statementList: (statement NEWLINE)+
+ * statement: expression | functionDefinition
+ * expression: intExpression
  * intExpression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
  * factor: MINUS vec | HASH vec | LPAREN intexpr RPAREN | vec
@@ -39,7 +53,7 @@ export const Parser = (input: string) => {
       return
     }
 
-    currentToken = lexer.nextToken()!
+    currentToken = lexer.nextToken()
   }
 
   const element = () => {
@@ -113,11 +127,47 @@ export const Parser = (input: string) => {
     return node
   }
 
+  const expression = () => {
+    return intExpression()
+  }
+
+  const statement = (): Statement => {
+    if (currentToken.type === 'BEGIN') {
+      return functionDefinition()
+    }
+
+    return { type: 'OutputExpression', expression: expression() }
+  }
+
+  const statementList = (): Statement[] => {
+    const statements = [statement()]
+    consume('NEWLINE')
+
+    while (currentToken.type !== 'END') {
+      statements.push(statement())
+      consume('NEWLINE')
+    }
+
+    return statements
+  }
+
+  const functionDefinition = (): FunctionDefinitionNode => {
+    consume('BEGIN')
+    const name = currentToken.value
+    consume('ID')
+    consume('NEWLINE')
+    const statements = statementList()
+    consume('END')
+
+    return { type: 'FunctionDefinition', name, statements }
+  }
+
   const program = (): ProgramNode => {
-    const expressions = currentToken.type === 'EOF' ? [] : [intExpression()]
+    const blockNode = functionDefinition()
+    consume('NEWLINE')
     consume('EOF')
 
-    return { type: 'Program', expressions }
+    return { type: 'Program', block: blockNode }
   }
 
   return program()

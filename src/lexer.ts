@@ -115,13 +115,14 @@ export const Lexer = (input: string) => {
   }
 
   const skipWhitespaces = () => {
+    let newlineToken = null
+
     while (/\s/.test(currentChar)) {
       if (currentChar === '\n') {
         const lastToken = tokens.slice(-1)[0]
 
-        // Don't push subsequent newline chars
         if (lastToken && lastToken.type !== 'NEWLINE') {
-          tokens.push({ type: 'NEWLINE', value: '\n' })
+          newlineToken = { type: 'NEWLINE', value: '\n' } as const
         }
 
         line += 1
@@ -130,6 +131,8 @@ export const Lexer = (input: string) => {
 
       consume()
     }
+
+    return newlineToken
   }
 
   const skipComment = () => {
@@ -166,7 +169,11 @@ export const Lexer = (input: string) => {
 
     nextToken: () => {
       while (currentChar !== undefined) {
-        skipWhitespaces()
+        const newlineToken = skipWhitespaces()
+
+        if (newlineToken !== null) {
+          return pushAndTop(newlineToken)
+        }
 
         if (currentChar === '/' && peek() === '*') {
           skipComment()
