@@ -7,6 +7,19 @@ export type FunctionDefinitionNode = {
   formalParams: string[]
   statements: Statement[]
 }
+type IfExpressionNode = {
+  type: 'IfExpression'
+  predicate: PredicateNode
+  thenStatements: Statement[]
+  elseStatements: Statement[]
+}
+// @TODO: make this part of BinaryOpNode or rename the latter to ArithmeticOpNode
+type PredicateNode = {
+  type: 'Predicate'
+  op: 'LTE' | 'LT' | 'EQ' | 'NEQ' | 'GT' | 'GTE'
+  left: Expression
+  right: Expression
+}
 export type AssignmentNode = { type: 'Assignment'; left: string; right: Node }
 type OutputExpressionNode = { type: 'OutputExpression'; expression: Statement }
 type Statement = Exclude<Node, { type: 'Program' }>
@@ -23,6 +36,8 @@ export type Node =
   | ProgramNode
   | FunctionCallNode
   | FunctionDefinitionNode
+  | IfExpressionNode
+  | PredicateNode
   | AssignmentNode
   | OutputExpressionNode
   | VarNode
@@ -42,7 +57,11 @@ export type Node =
  * programDefinition: BEGIN name NEWLINE statementList END
  * functionDefinition: BEGIN name (LPAREN ID (COMMA ID)* RPAREN)? NEWLINE statementList END
  * statementList: (statement NEWLINE)+
- * statement: functionDefinition | funCall | assignment | expression
+ * statement: functionDefinition | funCall | assignment | expression | ifExpression
+ * statementList2: (statement2 NEWLINE)+
+ * statement2: funCall | assignment | expression | ifExpression
+ * ifExpression: IF predicate NEWLINE (statementList2) (ELSE NEWLINE stetementList2)? END
+ * predicate: expression (LT | LTE | EQ | NEQ | GT | GTE) expression
  * assignment: ID ASSIGN expression
  * expression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
@@ -56,10 +75,12 @@ export const Parser = (input: string) => {
   const lexer = Lexer(input)
   let currentToken: Token = lexer.nextToken()!
 
-  const assertToken = (token: Token, type: Token['type']) => {
-    if (token.type !== type) {
+  const assertToken = (token: Token, ...types: Token['type'][]) => {
+    if (!types.includes(token.type)) {
       // @TODO: improve error message by providing at least line:col informations
-      throw new Error(`Syntax error: expected token "${type}" but got "${token.type}".`)
+      throw new Error(
+        `Syntax error: expected token "${types.join(' or ')}" but got "${token.type}".`,
+      )
     }
   }
 
@@ -80,6 +101,11 @@ export const Parser = (input: string) => {
   // Checks if the given token represents the start of an expression
   const isStartOfExpression = (token: Token) =>
     ['STRING', 'MINUS', 'HASH', 'LPAREN', 'INT', 'ID'].includes(token.type)
+
+  // Checks if there's another statement to parse for the given block. A block is defined by
+  // a function definition (which ends with END) or an if expression (which ends with END and
+  // optionally ELSE).
+  const hasNextStatement = (token: Token) => !['END', 'ELSE'].includes(token.type)
 
   // Grammar rules
 
@@ -199,9 +225,53 @@ export const Parser = (input: string) => {
     return { type: 'Assignment', left: id.value, right: expression() }
   }
 
-  const statement = (): Statement => {
-    if (currentToken.type === 'BEGIN') {
+  const predicate = () => {
+    const left = expression()
+
+    assertToken(currentToken, 'LTE', 'LT', 'EQ', 'NEQ', 'GT', 'GTE')
+    const op = currentToken.type as PredicateNode['op']
+    consume(currentToken.type)
+
+    const right = expression()
+
+    return { type: 'Predicate', op, left, right } as const
+  }
+
+  const ifExpression = () => {
+    consume('IF')
+    const predicateNode = predicate()
+    consume('NEWLINE')
+    const thenStatements = statementList({ excludeFunctionDefinition: true })
+    const elseStatements = []
+
+    if (currentToken.type === 'ELSE') {
+      consume('ELSE')
+      consume('NEWLINE')
+      elseStatements.push(...statementList({ excludeFunctionDefinition: true }))
+    }
+
+    consume('END')
+
+    return {
+      type: 'IfExpression',
+      predicate: predicateNode,
+      thenStatements,
+      elseStatements,
+    } as const
+  }
+
+  // `excludeFunctionDefinition` makes this function act also as the `statement2` rule of the grammar
+  const statement = ({
+    excludeFunctionDefinition,
+  }: {
+    excludeFunctionDefinition: boolean
+  }): Statement => {
+    if (!excludeFunctionDefinition && currentToken.type === 'BEGIN') {
       return functionDefinition()
+    }
+
+    if (currentToken.type === 'IF') {
+      return { type: 'OutputExpression', expression: ifExpression() }
     }
 
     if (currentToken.type === 'ID' && lexer.peek().type === 'ASSIGN') {
@@ -216,20 +286,28 @@ export const Parser = (input: string) => {
   }
 
   // The parameter `isProgramDefinition` si just for convenience, it avoids to define
-  // a new grammar rule with its corresponding function
-  const statementList = (isProgramDefinition: boolean): Statement[] => {
-    const statements = [statement()]
+  // a new grammar rule with its corresponding function.
+  // Same for `excludeFunctionDefinition`, it just make this act also as the `statementList2`
+  // rule of the grammar.
+  const statementList = ({
+    isProgramDefinition = false,
+    excludeFunctionDefinition = false,
+  }: {
+    isProgramDefinition?: boolean
+    excludeFunctionDefinition?: boolean
+  } = {}): Statement[] => {
+    const statements = [statement({ excludeFunctionDefinition })]
     consume('NEWLINE')
 
-    while (currentToken.type !== 'END') {
-      statements.push(statement())
+    while (hasNextStatement(currentToken)) {
+      statements.push(statement({ excludeFunctionDefinition }))
       consume('NEWLINE')
     }
 
+    // The last statement can't be an output expression for functions other than the program
     if (!isProgramDefinition) {
       const lastStatement = statements.slice(-1)[0]
 
-      // The last statement can't be an output expression for functions other than the program
       if (lastStatement.type === 'OutputExpression') {
         statements.pop()
         statements.push(lastStatement.expression)
@@ -262,7 +340,7 @@ export const Parser = (input: string) => {
     }
 
     consume('NEWLINE')
-    const statements = statementList(false)
+    const statements = statementList()
     consume('END')
 
     return { type: 'FunctionDefinition', name, formalParams, statements }
@@ -274,7 +352,7 @@ export const Parser = (input: string) => {
     const name = currentToken.value
     consume('ID')
     consume('NEWLINE')
-    const statements = statementList(true)
+    const statements = statementList({ isProgramDefinition: true })
     consume('END')
 
     // No need to define a new node, the semantic remains the same of a function definition

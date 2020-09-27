@@ -19,6 +19,15 @@ const binaryOp = {
   DIV: (left: number, right: number) => Math.trunc(left / right),
 } as const
 
+const relationalOp = {
+  LTE: (left: number | string, right: number | string) => left <= right,
+  LT: (left: number | string, right: number | string) => left < right,
+  EQ: (left: number | string, right: number | string) => left === right,
+  NEQ: (left: number | string, right: number | string) => left !== right,
+  GT: (left: number | string, right: number | string) => left > right,
+  GTE: (left: number | string, right: number | string) => left >= right,
+} as const
+
 type StackFrame = { name: string; members: Map<string, any> }
 
 export const Interpreter = (ast: ProgramNode) => {
@@ -62,6 +71,33 @@ export const Interpreter = (ast: ProgramNode) => {
             .map((statement) => evaluate(statement))
             .slice(-1)[0]
         )
+
+      case 'Predicate':
+        const left = evaluate(node.left) as (string | number)[]
+        const right = evaluate(node.right) as (string | number)[]
+
+        if (isVectorOfInts(left) && isVectorOfInts(right)) {
+          if (left.length === right.length) {
+            return left.every((element, index) => relationalOp[node.op](element, right[index]))
+          }
+
+          throw new Error('Incompatible vector lengths.')
+        }
+
+        if (isVectorOfStrings(left) && isVectorOfStrings(right)) {
+          return relationalOp[node.op](left.join(''), right.join(''))
+        }
+
+        throw new Error(
+          `Type mismatch, operator "${node.op}" can only be computed on vectors of the same type`,
+        )
+
+      case 'IfExpression':
+        if (evaluate(node.predicate)) {
+          return node.thenStatements.map((statement) => evaluate(statement)).slice(-1)[0]
+        }
+
+        return node.elseStatements.map((statement) => evaluate(statement)).slice(-1)[0]
 
       case 'Assignment':
         const value = evaluate(node.right)

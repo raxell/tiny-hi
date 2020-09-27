@@ -410,6 +410,71 @@ const tests: Test[] = [
     output: '4\n5\n10',
   },
 
+  // If-else
+  {
+    description: 'If expression',
+    input: `
+      BEGIN MAIN
+        IF 1 < 2
+          3
+        END
+      END
+    `,
+    output: '3',
+  },
+
+  {
+    description: 'If expression inside function',
+    input: `
+      BEGIN MAIN
+        BEGIN F
+          IF 1 < 2
+            3
+          END
+        END
+        F()
+      END
+    `,
+    output: '3',
+  },
+
+  {
+    description: 'If-else expression',
+    input: `
+      BEGIN MAIN
+        IF 1 > 2
+          3
+        ELSE
+          4
+        END
+      END
+    `,
+    output: '4',
+  },
+
+  {
+    description: 'If-else expression on strings',
+    input: `
+      BEGIN MAIN
+        IF "ab" = "ab"
+          3
+        END
+
+        IF "ab" <> "ab"
+          3
+        ELSE
+          4
+        END
+
+        AB <- "ab"
+        IF AB "cd" = AB "cd"
+          5
+        END
+      END
+    `,
+    output: '3\n4\n5',
+  },
+
   // Function calls
   {
     description: 'Function call without arguments',
@@ -595,6 +660,20 @@ const tests: Test[] = [
       END
     `,
     output: new Error(`Type mismatch, operator "ADD" can only be applied to vectors of integers`),
+  },
+
+  {
+    description: 'Relational operation on heterogeneous vectors',
+    input: `
+      BEGIN MAIN
+        IF 1 < "text"
+          3
+        END
+      END
+    `,
+    output: new Error(
+      'Type mismatch, operator "LT" can only be computed on vectors of the same type',
+    ),
   },
 
   // Maximum call stack

@@ -43,6 +43,17 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
 
         return
 
+      case 'IfExpression':
+        evaluate(node.predicate)
+        node.thenStatements.forEach((statement) => evaluate(statement))
+        node.elseStatements.forEach((statement) => evaluate(statement))
+        return
+
+      case 'Predicate':
+        evaluate(node.left)
+        evaluate(node.right)
+        return
+
       case 'Assignment':
         if (currentScope.formalParams.includes(node.left)) {
           throw new Error(`Cannot reassign to function parameter "${node.left}"`)
