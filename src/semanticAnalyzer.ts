@@ -49,6 +49,7 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         }
 
         currentScope.variables.add(node.left)
+        evaluate(node.right)
 
         return
 
@@ -98,6 +99,9 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         return
 
       case 'Int':
+        return
+
+      case 'String':
         return
     }
   }
