@@ -4,6 +4,12 @@ import { globalScopeName, semanticAnalyzer } from './semanticAnalyzer'
 const isNode = <T>(value: unknown, type: Node['type']): value is T =>
   typeof value === 'object' && value !== null && (value as Node).type === type
 
+const isVectorOfStrings = (vector: unknown[]): vector is string[] =>
+  vector.every((element) => typeof element === 'string')
+
+const isVectorOfInts = (vector: unknown[]): vector is number[] =>
+  vector.every((element) => typeof element === 'number')
+
 const maximumCallStack = 100
 
 const binaryOp = {
@@ -66,14 +72,17 @@ export const Interpreter = (ast: ProgramNode) => {
       case 'OutputExpression':
         const vector = evaluate(node.expression) as (string | number)[]
 
-        // @TODO: check elements compatibility
-        if (typeof vector[0] === 'string') {
-          console.log((evaluate(node.expression) as string[]).join(''))
+        if (isVectorOfStrings(vector)) {
+          console.log(vector.join(''))
           return
         }
 
-        console.log((evaluate(node.expression) as number[]).join(' '))
-        return
+        if (isVectorOfInts(vector)) {
+          console.log(vector.join(' '))
+          return
+        }
+
+        throw new Error('OutputExpression error, vector elements must be of the same type')
 
       case 'Var':
         return getCurrentStackFrame().members.get(node.name)
@@ -91,16 +100,28 @@ export const Interpreter = (ast: ProgramNode) => {
       case 'UnaryOp':
         switch (node.op) {
           case 'NEGATION':
-            return (evaluate(node.value) as number[]).map((element) => -element)
+            const vec = evaluate(node.value) as (number | string)[]
+
+            if (isVectorOfInts(vec)) {
+              return vec.map((element) => -element)
+            }
+
+            throw new Error(
+              'Type mismatch, operator "~" is only applicable to a vector of integers',
+            )
+
           case 'LENGTH':
             const vector = evaluate(node.value) as (number | string)[]
 
-            // @TODO: check elements compatibility
-            if (typeof vector[0] === 'string') {
+            if (isVectorOfInts(vector)) {
+              return [vector.length]
+            }
+
+            if (isVectorOfStrings(vector)) {
               return [vector.join('').length]
             }
 
-            return [(evaluate(node.value) as number[]).length]
+            throw new Error('Type mismatch, operator "#" is only applicable to homogeneous vectors')
         }
 
       case 'BinaryOp':
@@ -112,6 +133,12 @@ export const Interpreter = (ast: ProgramNode) => {
             const left = evaluate(node.left) as number[]
             const right = evaluate(node.right) as number[]
 
+            if (!isVectorOfInts(left) || !isVectorOfInts(right)) {
+              throw new Error(
+                `Type mismatch, operator "${node.op}" can only be applied to vectors of integers`,
+              )
+            }
+
             if (left.length === right.length) {
               return left.map((element, index) => binaryOp[node.op](element, right[index]))
             }
@@ -119,7 +146,7 @@ export const Interpreter = (ast: ProgramNode) => {
             if (left.length === 1) {
               return right.map((element) => binaryOp[node.op](element, left[0]))
             }
-          default:
+
             throw new Error('Incompatible vector lengths.')
         }
     }

@@ -556,6 +556,47 @@ const tests: Test[] = [
     output: new Error('Parameters mismatch, expected 1 arguments for function "F" but got 0'),
   },
 
+  // Vector type mismatch
+  {
+    description: 'Negation operator on string vector',
+    input: `
+      BEGIN MAIN
+        ~"text"
+      END
+    `,
+    output: new Error('Type mismatch, operator "~" is only applicable to a vector of integers'),
+  },
+
+  {
+    description: 'Length operator on heterogeneous vectors',
+    input: `
+      BEGIN MAIN
+        #1 "text" 2
+      END
+    `,
+    output: new Error('Type mismatch, operator "#" is only applicable to homogeneous vectors'),
+  },
+
+  {
+    description: 'Output expression on heterogeneous vectors',
+    input: `
+      BEGIN MAIN
+        "ab" 1 2
+      END
+    `,
+    output: new Error('OutputExpression error, vector elements must be of the same type'),
+  },
+
+  {
+    description: 'Binary operation on heterogeneous vectors',
+    input: `
+      BEGIN MAIN
+        1 + "lorem"
+      END
+    `,
+    output: new Error(`Type mismatch, operator "ADD" can only be applied to vectors of integers`),
+  },
+
   // Maximum call stack
   {
     description: 'Maximum call stack',
