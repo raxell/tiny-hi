@@ -224,6 +224,12 @@ export const Lexer = (input: string) => {
           })
         }
 
+        if (currentChar === ',') {
+          consume()
+
+          return pushAndTop({ type: 'COMMA', value: ',' })
+        }
+
         if (currentChar === '#') {
           consume()
 

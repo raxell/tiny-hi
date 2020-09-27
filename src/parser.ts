@@ -1,7 +1,7 @@
 import { Lexer, Token } from './lexer'
 
 export type ProgramNode = { type: 'Program'; block: FunctionDefinitionNode }
-type FunctionDefinitionNode = {
+export type FunctionDefinitionNode = {
   type: 'FunctionDefinition'
   name: string
   formalParams: string[]
@@ -39,18 +39,18 @@ export type Node =
  * - is `A[1] <- 2` a valid assignment expression?
  *
  * program: functionDefinition NEWLINE
- * functionDefinition: BEGIN name NEWLINE statementList END
+ * functionDefinition: BEGIN name (LPAREN ID (COMMA ID)* RPAREN)? NEWLINE statementList END
  * statementList: (statement NEWLINE)+
  * statement: functionDefinition | funCall | assignment | expression
  * assignment: ID ASSIGN expression
  * expression: intExpression
  * intExpression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
- * factor: MINUS vec | HASH vec | LPAREN intexpr RPAREN | vec
+ * factor: TILDE vec | HASH vec | LPAREN intexpr RPAREN | vec
  * vector: element element*
  * element: INT | var | funCall | factor
  * var: ID (LSQUARE intExpression RSQUARE)?
- * funCall: ID LPAREN RPAREN
+ * funCall: ID LPAREN (expression (COMMA expression)*)? RPAREN
  */
 export const Parser = (input: string) => {
   const lexer = Lexer(input)
@@ -73,13 +73,33 @@ export const Parser = (input: string) => {
     currentToken = lexer.nextToken()
   }
 
+  // Checks if the given token represents the start of an element
+  const isStartOfElement = (token: Token) =>
+    ['INT', 'ID', 'TILDE', 'HASH', 'LPAREN'].includes(token.type)
+
+  // Checks if the given token represents the start of an expression
+  const isStartOfExpression = (token: Token) =>
+    ['MINUS', 'HASH', 'LPAREN', 'INT', 'ID'].includes(token.type)
+
+  // Grammar rules
+
   const funCall = () => {
     const name = currentToken.value
+    const actualParams: Node[] = []
     consume('ID')
     consume('LPAREN')
+
+    if (isStartOfExpression(currentToken)) {
+      actualParams.push(expression())
+
+      while (currentToken.type === 'COMMA') {
+        actualParams.push(expression())
+      }
+    }
+
     consume('RPAREN')
 
-    return { type: 'FunctionCall', name, actualParams: [] as Node[] } as const
+    return { type: 'FunctionCall', name, actualParams } as const
   }
 
   const element = () => {
@@ -103,7 +123,7 @@ export const Parser = (input: string) => {
   const vector = (): VectorNode => {
     const elements = [element()]
 
-    while (['ID', 'INT', 'TILDE', 'HASH', 'LPAREN'].includes(currentToken.type)) {
+    while (isStartOfElement(currentToken)) {
       elements.push(element())
     }
 
@@ -203,12 +223,30 @@ export const Parser = (input: string) => {
   const functionDefinition = (): FunctionDefinitionNode => {
     consume('BEGIN')
     const name = currentToken.value
+    const formalParams = []
     consume('ID')
+
+    if (currentToken.type === 'LPAREN') {
+      consume('LPAREN')
+      formalParams.push(currentToken.value)
+      consume('ID')
+
+      // Typescript can't infer that there's been a side effect in `consume`
+      // @ts-ignore
+      while (currentToken.type === 'COMMA') {
+        consume('COMMA')
+        formalParams.push(currentToken.value)
+        consume('ID')
+      }
+
+      consume('RPAREN')
+    }
+
     consume('NEWLINE')
     const statements = statementList()
     consume('END')
 
-    return { type: 'FunctionDefinition', name, formalParams: [], statements }
+    return { type: 'FunctionDefinition', name, formalParams, statements }
   }
 
   const program = (): ProgramNode => {

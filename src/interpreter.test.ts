@@ -373,6 +373,19 @@ const tests: Test[] = [
     output: '7',
   },
 
+  {
+    description: 'Function call with one argument',
+    input: `
+      BEGIN PROG
+        BEGIN F(X)
+          X
+        END
+        F(7)
+      END
+    `,
+    output: '7',
+  },
+
   // Undefined symbols
   {
     description: 'Undefined variables',
@@ -410,6 +423,33 @@ const tests: Test[] = [
       END
     `,
     output: new Error('Function "B" has already been defined'),
+  },
+
+  // Function parameters mismatch
+  {
+    description: 'Too many arguments',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          1
+        END
+        F(2)
+      END
+    `,
+    output: new Error('Parameters mismatch, expected 0 arguments for function "F" but got 1'),
+  },
+
+  {
+    description: 'Too few arguments',
+    input: `
+      BEGIN PROG
+        BEGIN F(X)
+          1
+        END
+        F()
+      END
+    `,
+    output: new Error('Parameters mismatch, expected 1 arguments for function "F" but got 0'),
   },
 
   // Maximum call stack

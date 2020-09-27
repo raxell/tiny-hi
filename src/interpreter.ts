@@ -27,26 +27,25 @@ export const Interpreter = (ast: ProgramNode) => {
         if (callStack.length > maximumCallStack) {
           throw new Error('Maximum call stack exceeded')
         }
+
         const { formalParams, astNode } = scopes.get(node.name)!
-        const activationRecord = { name: node.name, members: new Map() }
+        const stackFrame = { name: node.name, members: new Map() }
 
         node.actualParams.forEach((value, index) => {
-          activationRecord.members.set(formalParams[index], value)
+          stackFrame.members.set(formalParams[index], evaluate(value))
         })
 
-        callStack.push(activationRecord)
-        evaluate(astNode)
+        callStack.push(stackFrame)
+        const result = evaluate(astNode)
         callStack.pop()
 
-        return
+        return result
 
       case 'FunctionDefinition':
-        callStack.push({ name: node.name, members: new Map() })
         node.statements
           // Functions definitions must be executed only when called
           .filter((statement) => statement.type !== 'FunctionDefinition')
           .forEach((statement) => evaluate(statement))
-        callStack.pop()
 
         return node.statements.slice(-1)[0]
 
@@ -98,5 +97,7 @@ export const Interpreter = (ast: ProgramNode) => {
     }
   }
 
-  evaluate(scopes.get(globalScopeName)!.astNode)
+  const entrypoint = scopes.get(globalScopeName)!.astNode
+  callStack.push({ name: entrypoint.name, members: new Map() })
+  evaluate(entrypoint)
 }

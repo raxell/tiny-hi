@@ -1,10 +1,10 @@
-import { Node, ProgramNode } from './parser'
+import { Node, FunctionDefinitionNode, ProgramNode } from './parser'
 
 type Scope = {
   formalParams: string[]
   functions: Set<string>
   variables: Set<string>
-  astNode: Node
+  astNode: FunctionDefinitionNode
 }
 
 export const globalScopeName = '_Global'
@@ -62,9 +62,18 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         return
 
       case 'FunctionCall':
-        if (currentScope && !currentScope.functions.has(node.name)) {
+        const calledFunctionScope = scopes.get(node.name)
+
+        if (calledFunctionScope === undefined) {
           throw new Error(`Undefined function "${node.name}"`)
         }
+
+        if (calledFunctionScope.formalParams.length !== node.actualParams.length) {
+          throw new Error(
+            `Parameters mismatch, expected ${calledFunctionScope.formalParams.length} arguments for function "${calledFunctionScope.astNode.name}" but got ${node.actualParams.length}`,
+          )
+        }
+
         return
 
       case 'OutputExpression':
