@@ -1,5 +1,8 @@
-import { ProgramNode, Node } from './parser'
+import { FunctionCallNode, AssignmentNode, ProgramNode, Node } from './parser'
 import { globalScopeName, semanticAnalyzer } from './semanticAnalyzer'
+
+const isNode = <T>(value: unknown, type: Node['type']): value is T =>
+  typeof value === 'object' && value !== null && (value as Node).type === type
 
 const maximumCallStack = 100
 
@@ -39,19 +42,26 @@ export const Interpreter = (ast: ProgramNode) => {
         const result = evaluate(astNode)
         callStack.pop()
 
+        if (isNode<AssignmentNode>(result, 'Assignment')) {
+          return evaluate(result.right)
+        }
+
         return result
 
       case 'FunctionDefinition':
-        node.statements
-          // Functions definitions must be executed only when called
-          .filter((statement) => statement.type !== 'FunctionDefinition')
-          .forEach((statement) => evaluate(statement))
-
-        return node.statements.slice(-1)[0]
+        return (
+          node.statements
+            // Functions definitions must be executed only when called
+            .filter((statement) => statement.type !== 'FunctionDefinition')
+            .map((statement) => evaluate(statement))
+            .slice(-1)[0]
+        )
 
       case 'Assignment':
-        getCurrentStackFrame().members.set(node.left, evaluate(node.right))
-        return
+        const value = evaluate(node.right)
+        getCurrentStackFrame().members.set(node.left, value)
+        // Assignment is a valid return value for functions, so it is an expression
+        return value
 
       case 'OutputExpression':
         console.log((evaluate(node.expression) as unknown[]).join(' '))

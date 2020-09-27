@@ -7,12 +7,13 @@ export type FunctionDefinitionNode = {
   formalParams: string[]
   statements: Statement[]
 }
-type AssignmentNode = { type: 'Assignment'; left: string; right: Node }
-type OutputExpressionNode = { type: 'OutputExpression'; expression: Node }
-type Statement = FunctionDefinitionNode | AssignmentNode | OutputExpressionNode | FunctionCallNode
-type VectorNode = { type: 'Vector'; elements: Node[] }
+export type AssignmentNode = { type: 'Assignment'; left: string; right: Node }
+type OutputExpressionNode = { type: 'OutputExpression'; expression: Statement }
+type Statement = Exclude<Node, { type: 'Program' }>
+type Expression = Exclude<Node, { type: 'Program' }>
+type VectorNode = { type: 'Vector'; elements: Expression[] }
 type VarNode = { type: 'Var'; name: string }
-type FunctionCallNode = { type: 'FunctionCall'; name: string; actualParams: Node[] }
+export type FunctionCallNode = { type: 'FunctionCall'; name: string; actualParams: Node[] }
 type IntNode = { type: 'Int'; value: number }
 type UnaryOpNode = { type: 'UnaryOp'; op: 'LENGTH' | 'NEGATION'; value: VectorNode }
 type BinaryOpNode = { type: 'BinaryOp'; op: 'ADD' | 'SUB' | 'MUL' | 'DIV'; left: Node; right: Node }
@@ -38,7 +39,8 @@ export type Node =
  * Doubts:
  * - is `A[1] <- 2` a valid assignment expression?
  *
- * program: functionDefinition NEWLINE
+ * program: programDefinition NEWLINE
+ * programDefinition: BEGIN name NEWLINE statementList END
  * functionDefinition: BEGIN name (LPAREN ID (COMMA ID)* RPAREN)? NEWLINE statementList END
  * statementList: (statement NEWLINE)+
  * statement: functionDefinition | funCall | assignment | expression
@@ -103,6 +105,10 @@ export const Parser = (input: string) => {
   }
 
   const element = () => {
+    if (currentToken.type === 'ID' && lexer.peek().type === 'LPAREN') {
+      return funCall()
+    }
+
     if (currentToken.type === 'ID') {
       const name = currentToken.value
       consume('ID')
@@ -130,7 +136,7 @@ export const Parser = (input: string) => {
     return { type: 'Vector', elements } as const
   }
 
-  var factor = (): Node => {
+  var factor = (): Expression => {
     if (currentToken.type === 'TILDE') {
       consume('TILDE')
 
@@ -202,19 +208,31 @@ export const Parser = (input: string) => {
     }
 
     if (currentToken.type === 'ID' && lexer.peek().type === 'LPAREN') {
-      return funCall()
+      return { type: 'OutputExpression', expression: funCall() }
     }
 
     return { type: 'OutputExpression', expression: expression() }
   }
 
-  const statementList = (): Statement[] => {
+  // The parameter `isProgramDefinition` si just for convenience, it avoids to define
+  // a new grammar rule with its corresponding function
+  const statementList = (isProgramDefinition: boolean): Statement[] => {
     const statements = [statement()]
     consume('NEWLINE')
 
     while (currentToken.type !== 'END') {
       statements.push(statement())
       consume('NEWLINE')
+    }
+
+    if (!isProgramDefinition) {
+      const lastStatement = statements.slice(-1)[0]
+
+      // The last statement can't be an output expression for functions other than the program
+      if (lastStatement.type === 'OutputExpression') {
+        statements.pop()
+        statements.push(lastStatement.expression)
+      }
     }
 
     return statements
@@ -243,14 +261,27 @@ export const Parser = (input: string) => {
     }
 
     consume('NEWLINE')
-    const statements = statementList()
+    const statements = statementList(false)
     consume('END')
 
     return { type: 'FunctionDefinition', name, formalParams, statements }
   }
 
+  // A program is a special case of a function definition, it has no parameters nor return expression
+  const programDefinition = (): FunctionDefinitionNode => {
+    consume('BEGIN')
+    const name = currentToken.value
+    consume('ID')
+    consume('NEWLINE')
+    const statements = statementList(true)
+    consume('END')
+
+    // No need to define a new node, the semantic remains the same of a function definition
+    return { type: 'FunctionDefinition', name, formalParams: [], statements }
+  }
+
   const program = (): ProgramNode => {
-    const blockNode = functionDefinition()
+    const blockNode = programDefinition()
     consume('NEWLINE')
     consume('EOF')
 

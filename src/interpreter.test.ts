@@ -386,6 +386,45 @@ const tests: Test[] = [
     output: '7',
   },
 
+  {
+    description: 'Assignment is a valid return expression',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          X <- 3
+        END
+        F()
+      END
+    `,
+    output: '3',
+  },
+
+  {
+    description: 'Assignment is not a valid output expression',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          X <- 3
+        END
+        Y <- F()
+      END
+    `,
+    output: '',
+  },
+
+  {
+    description: 'The last statement of a function is not an output expression',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          8
+        END
+        X <- F()
+      END
+    `,
+    output: '',
+  },
+
   // Undefined symbols
   {
     description: 'Undefined variables',
