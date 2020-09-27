@@ -359,6 +359,57 @@ const tests: Test[] = [
     output: '2 3 2',
   },
 
+  // Strings
+  {
+    description: 'Base string',
+    input: `
+      BEGIN MAIN
+        "text"
+      END
+    `,
+    output: 'text',
+  },
+
+  {
+    description: 'String assignment to variable',
+    input: `
+      BEGIN MAIN
+        A <- "text"
+        A
+      END
+    `,
+    output: 'text',
+  },
+
+  {
+    description: 'String concatenation',
+    input: `
+      BEGIN MAIN
+        A <- "ab"
+        B <- "cd"
+        A B
+        A <- A "ab"
+        A <- A "ab"
+        A
+        "ab" "cd"
+      END
+    `,
+    output: 'abcd\nababab\nabcd',
+  },
+
+  {
+    description: 'String length',
+    input: `
+      BEGIN MAIN
+        #"text"
+        A <- "lorem"
+        #A
+        #A A
+      END
+    `,
+    output: '4\n5\n10',
+  },
+
   // Function calls
   {
     description: 'Function call without arguments',
@@ -444,6 +495,20 @@ const tests: Test[] = [
       END
     `,
     output: new Error('Undefined function "X"'),
+  },
+
+  // Cannot reassign to function parameter
+  {
+    description: 'Reassignment to function parameter',
+    input: `
+      BEGIN MAIN
+        BEGIN F(X)
+          X <- 2
+        END
+        F(3)
+      END
+    `,
+    output: new Error('Cannot reassign to function parameter "X"'),
   },
 
   // Function already defined

@@ -15,6 +15,7 @@ type VectorNode = { type: 'Vector'; elements: Expression[] }
 type VarNode = { type: 'Var'; name: string }
 export type FunctionCallNode = { type: 'FunctionCall'; name: string; actualParams: Node[] }
 type IntNode = { type: 'Int'; value: number }
+type StringNode = { type: 'String'; value: string }
 type UnaryOpNode = { type: 'UnaryOp'; op: 'LENGTH' | 'NEGATION'; value: VectorNode }
 type BinaryOpNode = { type: 'BinaryOp'; op: 'ADD' | 'SUB' | 'MUL' | 'DIV'; left: Node; right: Node }
 
@@ -26,6 +27,7 @@ export type Node =
   | OutputExpressionNode
   | VarNode
   | IntNode
+  | StringNode
   | VectorNode
   | UnaryOpNode
   | BinaryOpNode
@@ -36,22 +38,18 @@ export type Node =
  * Grammar
  * -------
  *
- * Doubts:
- * - is `A[1] <- 2` a valid assignment expression?
- *
  * program: programDefinition NEWLINE
  * programDefinition: BEGIN name NEWLINE statementList END
  * functionDefinition: BEGIN name (LPAREN ID (COMMA ID)* RPAREN)? NEWLINE statementList END
  * statementList: (statement NEWLINE)+
  * statement: functionDefinition | funCall | assignment | expression
  * assignment: ID ASSIGN expression
- * expression: intExpression
- * intExpression: operand ((PLUS | MINUS) operand)*
+ * expression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
- * factor: TILDE vec | HASH vec | LPAREN intexpr RPAREN | vec
+ * factor: TILDE vector | HASH vector | LPAREN expression RPAREN | vector
  * vector: element element*
- * element: INT | var | funCall | factor
- * var: ID (LSQUARE intExpression RSQUARE)?
+ * element: INT | var | funCall | factor | STRING
+ * var: ID (LSQUARE expression RSQUARE)?
  * funCall: ID LPAREN (expression (COMMA expression)*)? RPAREN
  */
 export const Parser = (input: string) => {
@@ -77,11 +75,11 @@ export const Parser = (input: string) => {
 
   // Checks if the given token represents the start of an element
   const isStartOfElement = (token: Token) =>
-    ['INT', 'ID', 'TILDE', 'HASH', 'LPAREN'].includes(token.type)
+    ['STRING', 'INT', 'ID', 'TILDE', 'HASH', 'LPAREN'].includes(token.type)
 
   // Checks if the given token represents the start of an expression
   const isStartOfExpression = (token: Token) =>
-    ['MINUS', 'HASH', 'LPAREN', 'INT', 'ID'].includes(token.type)
+    ['STRING', 'MINUS', 'HASH', 'LPAREN', 'INT', 'ID'].includes(token.type)
 
   // Grammar rules
 
@@ -105,6 +103,13 @@ export const Parser = (input: string) => {
   }
 
   const element = () => {
+    if (currentToken.type === 'STRING') {
+      const node = { type: 'String', value: currentToken.value } as const
+      consume('STRING')
+
+      return node
+    }
+
     if (currentToken.type === 'ID' && lexer.peek().type === 'LPAREN') {
       return funCall()
     }
@@ -151,7 +156,7 @@ export const Parser = (input: string) => {
 
     if (currentToken.type === 'LPAREN') {
       consume('LPAREN')
-      const node = intExpression()
+      const node = expression()
       consume('RPAREN')
 
       return node
@@ -173,7 +178,7 @@ export const Parser = (input: string) => {
     return node
   }
 
-  var intExpression = () => {
+  var expression = () => {
     let node = operand()
 
     while (['PLUS', 'MINUS'].includes(currentToken.type)) {
@@ -184,10 +189,6 @@ export const Parser = (input: string) => {
     }
 
     return node
-  }
-
-  const expression = () => {
-    return intExpression()
   }
 
   const assignment = (): AssignmentNode => {

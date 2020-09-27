@@ -64,13 +64,24 @@ export const Interpreter = (ast: ProgramNode) => {
         return value
 
       case 'OutputExpression':
-        console.log((evaluate(node.expression) as unknown[]).join(' '))
+        const vector = evaluate(node.expression) as (string | number)[]
+
+        // @TODO: check elements compatibility
+        if (typeof vector[0] === 'string') {
+          console.log((evaluate(node.expression) as string[]).join(''))
+          return
+        }
+
+        console.log((evaluate(node.expression) as number[]).join(' '))
         return
 
       case 'Var':
         return getCurrentStackFrame().members.get(node.name)
 
       case 'Int':
+        return node.value
+
+      case 'String':
         return node.value
 
       case 'Vector':
@@ -82,6 +93,13 @@ export const Interpreter = (ast: ProgramNode) => {
           case 'NEGATION':
             return (evaluate(node.value) as number[]).map((element) => -element)
           case 'LENGTH':
+            const vector = evaluate(node.value) as (number | string)[]
+
+            // @TODO: check elements compatibility
+            if (typeof vector[0] === 'string') {
+              return [vector.join('').length]
+            }
+
             return [(evaluate(node.value) as number[]).length]
         }
 
