@@ -389,6 +389,27 @@ const tests: Test[] = [
     output: new Error('Uninitialized global variable ".A"'),
   },
 
+  // Subscript
+  {
+    description: 'Subscript',
+    input: `
+      BEGIN MAIN
+        A <- 3 2 1
+        A[1]
+        A <- "TEXT"
+        A[1 4]
+        A <- "TE" "XT"
+        A[1 4]
+        BEGIN SET_X
+          .X <- 3
+        END
+        SET_X()
+        A[.X]
+      END
+    `,
+    output: '3\nTT\nTT\n3\nX',
+  },
+
   // Strings
   {
     description: 'Base string',
@@ -639,9 +660,25 @@ const tests: Test[] = [
   },
 
   {
+    description: 'Undefined variable 3',
+    input: `
+      BEGIN MAIN
+        A <- "text"
+        A[I]
+      END
+    `,
+    output: new Error('Undefined variable "I"'),
+  },
+
+  // I can access global vars everywhere before they're defined but I still need to define them
+  {
     description: 'Undefined global variable',
     input: `
       BEGIN MAIN
+        /* this is valid */
+        .B
+        .B <- 3
+        /* this is not, since .A has not been defined anywhere */
         .A
       END
     `,
@@ -748,7 +785,7 @@ const tests: Test[] = [
         #1 "text" 2
       END
     `,
-    output: new Error('Type mismatch, operator "#" is only applicable to homogeneous vectors'),
+    output: new Error('Vector error, vector elements must be of the same type'),
   },
 
   {
@@ -758,7 +795,7 @@ const tests: Test[] = [
         "ab" 1 2
       END
     `,
-    output: new Error('OutputExpression error, vector elements must be of the same type'),
+    output: new Error('Vector error, vector elements must be of the same type'),
   },
 
   {
@@ -783,6 +820,18 @@ const tests: Test[] = [
     output: new Error(
       'Type mismatch, operator "LT" can only be computed on vectors of the same type',
     ),
+  },
+
+  // Subscript out of range
+  {
+    description: 'Subscript out of range',
+    input: `
+      BEGIN MAIN
+        A <- "TEXT"
+        A[5]
+      END
+    `,
+    output: new Error('Subscript out of range'),
   },
 
   // Maximum call stack

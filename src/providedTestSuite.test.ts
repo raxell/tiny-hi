@@ -404,16 +404,16 @@ const interpreterTests: Required<Test>[] = [
     output: '720',
   },
 
-  // {
-  //   description: 'bagl',
-  //   input: `
-  //     BEGIN PROG
-  //       A <- "ALGEBRA"
-  //       A[5 1 3 2]
-  //     END
-  //     `,
-  //   output: 'BAGL',
-  // },
+  {
+    description: 'bagl',
+    input: `
+      BEGIN PROG
+        A <- "ALGEBRA"
+        A[5 1 3 2]
+      END
+      `,
+    output: 'BAGL',
+  },
 
   // {
   //   description: 'gcf',
@@ -510,17 +510,17 @@ const interpreterTests: Required<Test>[] = [
     output: '1 2 3 4',
   },
 
-  // {
-  //   description: 'concat_1',
-  //   input: `
-  //     BEGIN MAIN
-  //       A <- 1 2
-  //       B <- A[1] A[2]
-  //       B
-  //     END
-  //     `,
-  //   output: '1 2',
-  // },
+  {
+    description: 'concat_1',
+    input: `
+      BEGIN MAIN
+        A <- 1 2
+        B <- A[1] A[2]
+        B
+      END
+      `,
+    output: '1 2',
+  },
 
   {
     description: 'vecsum',

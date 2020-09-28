@@ -139,6 +139,11 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         ) {
           throw new Error(`Undefined variable "${node.name}"`)
         }
+
+        if (node.subscript !== null) {
+          evaluate(node.subscript)
+        }
+
         return
 
       case 'FunctionCall':

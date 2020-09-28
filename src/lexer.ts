@@ -27,7 +27,6 @@ export type Token = {
     | 'GTE'
     | 'EQ'
     | 'NEQ'
-    | 'QUESTION_MARK'
     | 'ID'
     | 'INT'
     | 'STRING'
@@ -250,6 +249,18 @@ export const Lexer = (input: string) => {
           consume()
 
           return pushAndTop({ type: 'RPAREN', value: ')' })
+        }
+
+        if (currentChar === '[') {
+          consume()
+
+          return pushAndTop({ type: 'LSQUARE', value: '[' })
+        }
+
+        if (currentChar === ']') {
+          consume()
+
+          return pushAndTop({ type: 'RSQUARE', value: ']' })
         }
 
         if (currentChar === '+') {

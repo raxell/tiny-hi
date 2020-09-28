@@ -26,7 +26,7 @@ type OutputExpressionNode = { type: 'OutputExpression'; expression: Statement }
 type Statement = Exclude<Node, { type: 'Program' }>
 type Expression = Exclude<Node, { type: 'Program' }>
 type VectorNode = { type: 'Vector'; elements: Expression[] }
-type VarNode = { type: 'Var'; global: boolean; name: string }
+type VarNode = { type: 'Var'; global: boolean; name: string; subscript: Expression | null }
 export type FunctionCallNode = {
   type: 'FunctionCall'
   global: boolean
@@ -74,8 +74,8 @@ export type Node =
  * operand: factor ((STAR | SLASH) factor)*
  * factor: TILDE vector | HASH vector | LPAREN expression RPAREN | vector
  * vector: element element*
- * element: INT | var | funCall | factor | STRING
- * var: ID (LSQUARE expression RSQUARE)?
+ * element: INT | variable | funCall | factor | STRING
+ * variable: ID (LSQUARE expression RSQUARE)?
  * funCall: ID LPAREN (expression (COMMA expression)*)? RPAREN
  * ID: (DOT)? [A-Z][A-Z0-9_]
  */
@@ -138,6 +138,21 @@ export const Parser = (input: string) => {
     return { type: 'FunctionCall', global, name, actualParams } as const
   }
 
+  const variable = () => {
+    const name = currentToken.value
+    const global = name.startsWith('.')
+    let subscript = null
+    consume('ID')
+
+    if (currentToken.type === 'LSQUARE') {
+      consume('LSQUARE')
+      subscript = expression()
+      consume('RSQUARE')
+    }
+
+    return { type: 'Var', global, name, subscript } as const
+  }
+
   const element = () => {
     if (currentToken.type === 'STRING') {
       const node = { type: 'String', value: currentToken.value } as const
@@ -151,11 +166,7 @@ export const Parser = (input: string) => {
     }
 
     if (currentToken.type === 'ID') {
-      const name = currentToken.value
-      const global = name.startsWith('.')
-      consume('ID')
-
-      return { type: 'Var', global, name } as const
+      return variable()
     }
 
     if (currentToken.type === 'INT') {

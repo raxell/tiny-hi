@@ -73,8 +73,8 @@ export const Interpreter = (ast: ProgramNode) => {
         )
 
       case 'Predicate':
-        const left = evaluate(node.left) as (string | number)[]
-        const right = evaluate(node.right) as (string | number)[]
+        const left = evaluate(node.left) as number[] | [string]
+        const right = evaluate(node.right) as number[] | [string]
 
         if (isVectorOfInts(left) && isVectorOfInts(right)) {
           if (left.length === right.length) {
@@ -107,27 +107,46 @@ export const Interpreter = (ast: ProgramNode) => {
         return value
 
       case 'OutputExpression':
-        const vector = evaluate(node.expression) as (string | number)[]
-
-        if (isVectorOfStrings(vector)) {
-          console.log(vector.join(''))
-          return
-        }
+        const vector = evaluate(node.expression) as number[] | [string]
 
         if (isVectorOfInts(vector)) {
           console.log(vector.join(' '))
           return
         }
 
-        throw new Error('OutputExpression error, vector elements must be of the same type')
+        console.log(vector[0])
+        return
 
       case 'Var':
         const variableValue = (node.global ? callStack[0] : getCurrentStackFrame()).members.get(
           node.name,
-        )
+        ) as number[] | [string]
 
         if (variableValue === undefined) {
           throw new Error(`Uninitialized global variable "${node.name}"`)
+        }
+
+        if (node.subscript) {
+          const varElements =
+            typeof variableValue[0] === 'string' ? variableValue[0].split('') : variableValue
+
+          const subscriptElements = (evaluate(node.subscript) as (number | string)[]).map(
+            (value) => {
+              if (typeof value !== 'number') {
+                throw new Error(`Invalid subscript expression "${value}"`)
+              }
+
+              if (varElements[value - 1] === undefined) {
+                throw new Error('Subscript out of range')
+              }
+
+              return varElements[value - 1]
+            },
+          )
+
+          return typeof subscriptElements[0] === 'string'
+            ? subscriptElements.join('')
+            : subscriptElements
         }
 
         return variableValue
@@ -140,12 +159,18 @@ export const Interpreter = (ast: ProgramNode) => {
 
       case 'Vector':
         // The parser can generate nested vectors, flatten them to execute operations as expected
-        return node.elements.map((element) => evaluate(element)).flat()
+        const vec = node.elements.map((element) => evaluate(element)).flat()
+
+        if (!isVectorOfInts(vec) && !isVectorOfStrings(vec)) {
+          throw new Error('Vector error, vector elements must be of the same type')
+        }
+
+        return typeof vec[0] === 'string' ? [vec.join('')] : vec
 
       case 'UnaryOp':
         switch (node.op) {
           case 'NEGATION':
-            const vec = evaluate(node.value) as (number | string)[]
+            const vec = evaluate(node.value) as number[] | [string]
 
             if (isVectorOfInts(vec)) {
               return vec.map((element) => -element)
@@ -156,17 +181,13 @@ export const Interpreter = (ast: ProgramNode) => {
             )
 
           case 'LENGTH':
-            const vector = evaluate(node.value) as (number | string)[]
+            const vector = evaluate(node.value) as number[] | [string]
 
             if (isVectorOfInts(vector)) {
               return [vector.length]
             }
 
-            if (isVectorOfStrings(vector)) {
-              return [vector.join('').length]
-            }
-
-            throw new Error('Type mismatch, operator "#" is only applicable to homogeneous vectors')
+            return [vector[0].length]
         }
 
       case 'BinaryOp':
@@ -175,8 +196,8 @@ export const Interpreter = (ast: ProgramNode) => {
           case 'SUB':
           case 'MUL':
           case 'DIV':
-            const left = evaluate(node.left) as number[]
-            const right = evaluate(node.right) as number[]
+            const left = evaluate(node.left) as number[] | [string]
+            const right = evaluate(node.right) as number[] | [string]
 
             if (!isVectorOfInts(left) || !isVectorOfInts(right)) {
               throw new Error(
