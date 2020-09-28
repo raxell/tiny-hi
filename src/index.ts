@@ -32,8 +32,6 @@ rl.on('line', (line) => {
 rl.on('close', () => {
   const input = lines.join('\n')
 
-  const ast = Parser(input)
-
   if (debug) {
     console.log('Debugging informations')
 
@@ -42,15 +40,15 @@ rl.on('close', () => {
     console.log('')
 
     console.log('AST:')
-    console.log(util.inspect(ast, { colors: true, depth: Infinity }))
+    console.log(util.inspect(Parser(input), { colors: true, depth: Infinity }))
     console.log('')
 
     console.log('Scopes:')
-    console.log(semanticAnalyzer(ast))
+    console.log(semanticAnalyzer(Parser(input)))
     console.log('')
   }
 
   console.log('Output:')
 
-  Interpreter(ast)
+  Interpreter(Parser(input))
 })

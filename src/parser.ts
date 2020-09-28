@@ -119,6 +119,7 @@ export const Parser = (input: string) => {
       actualParams.push(expression())
 
       while (currentToken.type === 'COMMA') {
+        consume('COMMA')
         actualParams.push(expression())
       }
     }

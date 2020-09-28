@@ -15,6 +15,9 @@ type Test = {
   output: string | Error
 }
 
+// @TODO: Some of those tests do not belong to the interpreter but should be part of the
+// parser/semanticAnalyzer test suites, move them there.
+
 const tests: Test[] = [
   // Basic arithmetic
   {
@@ -500,6 +503,34 @@ const tests: Test[] = [
       END
     `,
     output: '7',
+  },
+
+  {
+    description: 'Function call with multiple arguments',
+    input: `
+      BEGIN PROG
+        BEGIN F(X, Y)
+          X
+          Y
+        END
+        F(7, 8)
+      END
+    `,
+    output: '7\n8',
+  },
+
+  {
+    description: 'Function call with variable argument',
+    input: `
+      BEGIN PROG
+        BEGIN F(X)
+          X
+        END
+        A <- 8
+        F(A)
+      END
+    `,
+    output: '8',
   },
 
   {
