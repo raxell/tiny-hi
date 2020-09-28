@@ -362,6 +362,33 @@ const tests: Test[] = [
     output: '2 3 2',
   },
 
+  {
+    description: 'Global variables',
+    input: `
+      BEGIN MAIN
+        BEGIN FUNC
+          .A <- 3
+        END
+        FUNC()
+        .A
+      END
+    `,
+    output: '3\n3',
+  },
+
+  {
+    description: 'Global variables without value',
+    input: `
+      BEGIN MAIN
+        .A
+        BEGIN FUNC
+          .A <- 3
+        END
+      END
+    `,
+    output: new Error('Uninitialized global variable ".A"'),
+  },
+
   // Strings
   {
     description: 'Base string',
@@ -534,6 +561,21 @@ const tests: Test[] = [
   },
 
   {
+    description: 'Global function',
+    input: `
+      BEGIN MAIN
+        .F2()
+        BEGIN F1
+          BEGIN .F2
+            3
+          END
+        END
+      END
+    `,
+    output: '3',
+  },
+
+  {
     description: 'Assignment is a valid return expression',
     input: `
       BEGIN PROG
@@ -581,6 +623,42 @@ const tests: Test[] = [
       END
     `,
     output: new Error('Undefined variable "X"'),
+  },
+
+  {
+    description: 'Undefined variable 2',
+    input: `
+      BEGIN MAIN
+        BEGIN F
+          A <- 1
+        END
+        A
+      END
+    `,
+    output: new Error('Undefined variable "A"'),
+  },
+
+  {
+    description: 'Undefined global variable',
+    input: `
+      BEGIN MAIN
+        .A
+      END
+    `,
+    output: new Error('Undefined variable ".A"'),
+  },
+
+  {
+    description: 'Undefined variable in function call',
+    input: `
+      BEGIN PROG
+        BEGIN F(X)
+          X
+        END
+        F(B)
+      END
+    `,
+    output: new Error('Undefined variable "B"'),
   },
 
   {
@@ -713,6 +791,23 @@ const tests: Test[] = [
     input: `
       BEGIN PROG
         BEGIN A
+          A()
+        END
+        A()
+      END
+    `,
+    output: new Error('Maximum call stack exceeded'),
+  },
+
+  {
+    description: 'Maximum call stack',
+    input: `
+      BEGIN PROG
+        BEGIN A
+          .B()
+        END
+        /* Global to make it possible for A to reference it */
+        BEGIN .B
           A()
         END
         A()

@@ -20,7 +20,6 @@ export type Token = {
     | 'ASTERISK'
     | 'SLASH'
     | 'HASH'
-    | 'DOT'
     | 'COMMA'
     | 'LT'
     | 'LTE'
@@ -87,6 +86,11 @@ export const Lexer = (input: string) => {
 
   const consumeId = () => {
     let id = ''
+
+    if (currentChar === '.') {
+      id += currentChar
+      consume()
+    }
 
     if (letterRegex.test(currentChar)) {
       id += currentChar
@@ -215,7 +219,7 @@ export const Lexer = (input: string) => {
           return pushAndTop({ type: 'STRING', value: consumeString() })
         }
 
-        if (letterRegex.test(currentChar)) {
+        if (letterRegex.test(currentChar) || (currentChar === '.' && letterRegex.test(peek()))) {
           const id = consumeId()
 
           return pushAndTop({

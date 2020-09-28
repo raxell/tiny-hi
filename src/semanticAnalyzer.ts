@@ -12,13 +12,80 @@ export const globalScopeName = '_Global'
 export const semanticAnalyzer = (ast: ProgramNode) => {
   // Assumes there can't be functions with the same name
   const scopes = new Map<string, Scope>()
-  let currentScope: Scope = {
+  const globalScope: Scope = {
     formalParams: [],
     functions: new Set(),
     variables: new Set(),
     astNode: ast.block,
   }
+  let currentScope = globalScope
   scopes.set(globalScopeName, currentScope)
+
+  // Populates the global scope for subsequent check of symbol definitions
+  const buildGlobalScope = (node: Node) => {
+    switch (node.type) {
+      case 'FunctionDefinition':
+        // Global functions are kept in the global scope
+        if (node.global) {
+          globalScope.functions.add(node.name)
+        }
+        node.statements.forEach((statement) => buildGlobalScope(statement))
+        return
+
+      case 'IfExpression':
+        buildGlobalScope(node.predicate)
+        node.thenStatements.forEach((statement) => buildGlobalScope(statement))
+        node.elseStatements.forEach((statement) => buildGlobalScope(statement))
+        return
+
+      case 'Predicate':
+        buildGlobalScope(node.left)
+        buildGlobalScope(node.right)
+        return
+
+      case 'Assignment':
+        // Global variables are kept in the global scope
+        if (node.global) {
+          globalScope.variables.add(node.left)
+        }
+        buildGlobalScope(node.right)
+        return
+
+      case 'Var':
+        return
+
+      case 'FunctionCall':
+        node.actualParams.forEach((actualParam) => buildGlobalScope(actualParam))
+        return
+
+      case 'OutputExpression':
+        buildGlobalScope(node.expression)
+        return
+
+      case 'Program':
+        buildGlobalScope(node.block)
+        return
+
+      case 'BinaryOp':
+        buildGlobalScope(node.left)
+        buildGlobalScope(node.right)
+        return
+
+      case 'UnaryOp':
+        buildGlobalScope(node.value)
+        return
+
+      case 'Vector':
+        node.elements.forEach((element) => buildGlobalScope(element))
+        return
+
+      case 'Int':
+        return
+
+      case 'String':
+        return
+    }
+  }
 
   const evaluate = (node: Node) => {
     switch (node.type) {
@@ -27,9 +94,8 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
           throw new Error(`Function "${node.name}" has already been defined`)
         }
 
-        if (currentScope) {
-          currentScope.functions.add(node.name)
-        }
+        // Global functions are kept in the global scope
+        ;(node.global ? globalScope : currentScope).functions.add(node.name)
         const previousScope = currentScope
         currentScope = {
           formalParams: node.formalParams,
@@ -59,13 +125,15 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
           throw new Error(`Cannot reassign to function parameter "${node.left}"`)
         }
 
-        currentScope.variables.add(node.left)
+        // Global variables are kept in the global scope
+        ;(node.global ? globalScope : currentScope).variables.add(node.left)
         evaluate(node.right)
 
         return
 
       case 'Var':
         if (
+          !globalScope.variables.has(node.name) &&
           !currentScope.formalParams.includes(node.name) &&
           !currentScope.variables.has(node.name)
         ) {
@@ -74,7 +142,7 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         return
 
       case 'FunctionCall':
-        const calledFunctionScope = scopes.get(node.name)
+        const calledFunctionScope = node.global ? globalScope : scopes.get(node.name)
 
         if (calledFunctionScope === undefined) {
           throw new Error(`Undefined function "${node.name}"`)
@@ -85,6 +153,8 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
             `Parameters mismatch, expected ${calledFunctionScope.formalParams.length} arguments for function "${calledFunctionScope.astNode.name}" but got ${node.actualParams.length}`,
           )
         }
+
+        node.actualParams.forEach((actualParam) => evaluate(actualParam))
 
         return
 
@@ -117,6 +187,7 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
     }
   }
 
+  buildGlobalScope(ast)
   evaluate(ast)
 
   return scopes

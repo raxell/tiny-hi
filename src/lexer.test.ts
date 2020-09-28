@@ -112,6 +112,7 @@ const tests: Test[] = [
       A
       ENDING
       SHERIF
+      .A
       A_B
       X_
       N0
@@ -123,6 +124,8 @@ const tests: Test[] = [
       { type: 'ID', value: 'ENDING' },
       { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'SHERIF' },
+      { type: 'NEWLINE', value: '\n' },
+      { type: 'ID', value: '.A' },
       { type: 'NEWLINE', value: '\n' },
       { type: 'ID', value: 'A_B' },
       { type: 'NEWLINE', value: '\n' },

@@ -101,7 +101,8 @@ export const Interpreter = (ast: ProgramNode) => {
 
       case 'Assignment':
         const value = evaluate(node.right)
-        getCurrentStackFrame().members.set(node.left, value)
+        // Global variables are stored on the global stack frame
+        ;(node.global ? callStack[0] : getCurrentStackFrame()).members.set(node.left, value)
         // Assignment is a valid return value for functions, so it is an expression
         return value
 
@@ -121,7 +122,15 @@ export const Interpreter = (ast: ProgramNode) => {
         throw new Error('OutputExpression error, vector elements must be of the same type')
 
       case 'Var':
-        return getCurrentStackFrame().members.get(node.name)
+        const variableValue = (node.global ? callStack[0] : getCurrentStackFrame()).members.get(
+          node.name,
+        )
+
+        if (variableValue === undefined) {
+          throw new Error(`Uninitialized global variable "${node.name}"`)
+        }
+
+        return variableValue
 
       case 'Int':
         return node.value
@@ -187,6 +196,9 @@ export const Interpreter = (ast: ProgramNode) => {
         }
     }
   }
+
+  // Allocate a frame for the global scope
+  callStack.push({ name: globalScopeName, members: new Map() })
 
   const entrypoint = scopes.get(globalScopeName)!.astNode
   callStack.push({ name: entrypoint.name, members: new Map() })

@@ -3,6 +3,7 @@ import { Lexer, Token } from './lexer'
 export type ProgramNode = { type: 'Program'; block: FunctionDefinitionNode }
 export type FunctionDefinitionNode = {
   type: 'FunctionDefinition'
+  global: boolean
   name: string
   formalParams: string[]
   statements: Statement[]
@@ -20,13 +21,18 @@ type PredicateNode = {
   left: Expression
   right: Expression
 }
-export type AssignmentNode = { type: 'Assignment'; left: string; right: Node }
+export type AssignmentNode = { type: 'Assignment'; global: boolean; left: string; right: Node }
 type OutputExpressionNode = { type: 'OutputExpression'; expression: Statement }
 type Statement = Exclude<Node, { type: 'Program' }>
 type Expression = Exclude<Node, { type: 'Program' }>
 type VectorNode = { type: 'Vector'; elements: Expression[] }
-type VarNode = { type: 'Var'; name: string }
-export type FunctionCallNode = { type: 'FunctionCall'; name: string; actualParams: Node[] }
+type VarNode = { type: 'Var'; global: boolean; name: string }
+export type FunctionCallNode = {
+  type: 'FunctionCall'
+  global: boolean
+  name: string
+  actualParams: Node[]
+}
 type IntNode = { type: 'Int'; value: number }
 type StringNode = { type: 'String'; value: string }
 type UnaryOpNode = { type: 'UnaryOp'; op: 'LENGTH' | 'NEGATION'; value: VectorNode }
@@ -55,6 +61,7 @@ export type Node =
  *
  * program: programDefinition NEWLINE
  * programDefinition: BEGIN name NEWLINE statementList END
+ * // using ID here is incorrect since params can't start with a DOT but keep this way for simplicity
  * functionDefinition: BEGIN name (LPAREN ID (COMMA ID)* RPAREN)? NEWLINE statementList END
  * statementList: (statement NEWLINE)+
  * statement: functionDefinition | funCall | assignment | expression | ifExpression
@@ -70,6 +77,7 @@ export type Node =
  * element: INT | var | funCall | factor | STRING
  * var: ID (LSQUARE expression RSQUARE)?
  * funCall: ID LPAREN (expression (COMMA expression)*)? RPAREN
+ * ID: (DOT)? [A-Z][A-Z0-9_]
  */
 export const Parser = (input: string) => {
   const lexer = Lexer(input)
@@ -111,6 +119,7 @@ export const Parser = (input: string) => {
 
   const funCall = () => {
     const name = currentToken.value
+    const global = name.startsWith('.')
     const actualParams: Node[] = []
     consume('ID')
     consume('LPAREN')
@@ -126,7 +135,7 @@ export const Parser = (input: string) => {
 
     consume('RPAREN')
 
-    return { type: 'FunctionCall', name, actualParams } as const
+    return { type: 'FunctionCall', global, name, actualParams } as const
   }
 
   const element = () => {
@@ -143,9 +152,10 @@ export const Parser = (input: string) => {
 
     if (currentToken.type === 'ID') {
       const name = currentToken.value
+      const global = name.startsWith('.')
       consume('ID')
 
-      return { type: 'Var', name } as const
+      return { type: 'Var', global, name } as const
     }
 
     if (currentToken.type === 'INT') {
@@ -220,10 +230,11 @@ export const Parser = (input: string) => {
 
   const assignment = (): AssignmentNode => {
     const id = currentToken
+    const global = id.value.startsWith('.')
     consume('ID')
     consume('ASSIGN')
 
-    return { type: 'Assignment', left: id.value, right: expression() }
+    return { type: 'Assignment', global, left: id.value, right: expression() }
   }
 
   const predicate = () => {
@@ -321,6 +332,7 @@ export const Parser = (input: string) => {
   const functionDefinition = (): FunctionDefinitionNode => {
     consume('BEGIN')
     const name = currentToken.value
+    const global = name.startsWith('.')
     const formalParams = []
     consume('ID')
 
@@ -328,6 +340,10 @@ export const Parser = (input: string) => {
       consume('LPAREN')
       formalParams.push(currentToken.value)
       consume('ID')
+      // This should be handled at grammar level
+      if (formalParams.slice(-1)[0].startsWith('.')) {
+        throw new Error('Unexpected global function parameter')
+      }
 
       // Typescript can't infer that there's been a side effect in `consume`
       // @ts-ignore
@@ -335,6 +351,10 @@ export const Parser = (input: string) => {
         consume('COMMA')
         formalParams.push(currentToken.value)
         consume('ID')
+        // This should be handled at grammar level
+        if (formalParams.slice(-1)[0].startsWith('.')) {
+          throw new Error('Unexpected global function parameter')
+        }
       }
 
       consume('RPAREN')
@@ -344,7 +364,7 @@ export const Parser = (input: string) => {
     const statements = statementList()
     consume('END')
 
-    return { type: 'FunctionDefinition', name, formalParams, statements }
+    return { type: 'FunctionDefinition', global, name, formalParams, statements }
   }
 
   // A program is a special case of a function definition, it has no parameters nor return expression
@@ -357,7 +377,7 @@ export const Parser = (input: string) => {
     consume('END')
 
     // No need to define a new node, the semantic remains the same of a function definition
-    return { type: 'FunctionDefinition', name, formalParams: [], statements }
+    return { type: 'FunctionDefinition', global: false, name, formalParams: [], statements }
   }
 
   const program = (): ProgramNode => {

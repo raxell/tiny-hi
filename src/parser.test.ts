@@ -11,6 +11,7 @@ test('Returns an AST', () => {
     type: 'Program',
     block: {
       type: 'FunctionDefinition',
+      global: false,
       name: 'PROG',
       formalParams: [],
       statements: [
@@ -24,4 +25,16 @@ test('Returns an AST', () => {
       ],
     },
   })
+})
+
+test('Global function parameter', () => {
+  expect(() => {
+    Parser(`
+      BEGIN MAIN
+        BEGIN FUN(.X)
+          1
+        END
+      END
+    `)
+  }).toThrow(new Error('Unexpected global function parameter'))
 })

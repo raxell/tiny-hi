@@ -149,21 +149,21 @@ const parserTests: Test[] = [
   //     `,
   // },
 
-  // {
-  //   description: 'atoms',
-  //   input: `
-  //     BEGIN PROG
-  //       X <- 1
-  //       X <- "TEST"
-  //       X <- A
-  //       X <- .A
-  //       X <- F(1)
-  //       X <- F("ONE")
-  //       X <- F(1, 2)
-  //       X <- F("ONE", "TWO")
-  //     END
-  //     `,
-  // },
+  {
+    description: 'atoms',
+    input: `
+      BEGIN PROG
+        X <- 1
+        X <- "TEST"
+        X <- A
+        X <- .A
+        X <- F(1)
+        X <- F("ONE")
+        X <- F(1, 2)
+        X <- F("ONE", "TWO")
+      END
+      `,
+  },
 
   {
     description: 'unary',
