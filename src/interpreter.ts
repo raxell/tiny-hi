@@ -92,6 +92,12 @@ export const Interpreter = (ast: ProgramNode) => {
           `Type mismatch, operator "${node.op}" can only be computed on vectors of the same type`,
         )
 
+      case 'Loop':
+        while (node.positive ? evaluate(node.predicate) : !evaluate(node.predicate)) {
+          node.statements.forEach((statement) => evaluate(statement))
+        }
+        return
+
       case 'IfExpression':
         if (evaluate(node.predicate)) {
           return node.thenStatements.map((statement) => evaluate(statement)).slice(-1)[0]
@@ -111,11 +117,11 @@ export const Interpreter = (ast: ProgramNode) => {
 
         if (isVectorOfInts(vector)) {
           console.log(vector.join(' '))
-          return
+          return vector
         }
 
         console.log(vector[0])
-        return
+        return vector
 
       case 'Var':
         const variableValue = (node.global ? callStack[0] : getCurrentStackFrame()).members.get(

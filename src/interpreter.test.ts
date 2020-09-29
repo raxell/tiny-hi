@@ -486,7 +486,7 @@ const tests: Test[] = [
         F()
       END
     `,
-    output: '3',
+    output: '3\n3',
   },
 
   {
@@ -524,6 +524,35 @@ const tests: Test[] = [
       END
     `,
     output: '3\n4\n5',
+  },
+
+  // While/Until
+  {
+    description: 'While',
+    input: `
+      BEGIN MAIN
+        X <- 0
+        WHILE X < 10
+          X <- X + 1
+        END
+        X
+      END
+    `,
+    output: '10',
+  },
+
+  {
+    description: 'Until',
+    input: `
+      BEGIN MAIN
+        X <- 10
+        UNTIL X <= 0
+          X <- X - 1
+        END
+        X
+      END
+    `,
+    output: '0',
   },
 
   // Function calls

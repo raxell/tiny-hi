@@ -32,6 +32,11 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         node.statements.forEach((statement) => buildGlobalScope(statement))
         return
 
+      case 'Loop':
+        buildGlobalScope(node.predicate)
+        node.statements.forEach((statement) => buildGlobalScope(statement))
+        return
+
       case 'IfExpression':
         buildGlobalScope(node.predicate)
         node.thenStatements.forEach((statement) => buildGlobalScope(statement))
@@ -107,6 +112,11 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         node.statements.forEach((statement) => evaluate(statement))
         currentScope = previousScope
 
+        return
+
+      case 'Loop':
+        evaluate(node.predicate)
+        node.statements.forEach((statement) => evaluate(statement))
         return
 
       case 'IfExpression':

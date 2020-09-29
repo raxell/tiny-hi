@@ -127,27 +127,27 @@ const parserTests: Test[] = [
       `,
   },
 
-  // {
-  //   description: 'while',
-  //   input: `
-  //     BEGIN PROG
-  //       WHILE X < 1
-  //         1
-  //       END
-  //     END
-  //     `,
-  // },
+  {
+    description: 'while',
+    input: `
+      BEGIN PROG
+        WHILE X < 1
+          1
+        END
+      END
+      `,
+  },
 
-  // {
-  //   description: 'until',
-  //   input: `
-  //     BEGIN PROG
-  //       UNTIL X < 1
-  //         1
-  //       END
-  //     END
-  //     `,
-  // },
+  {
+    description: 'until',
+    input: `
+      BEGIN PROG
+        UNTIL X < 1
+          1
+        END
+      END
+      `,
+  },
 
   {
     description: 'atoms',
@@ -329,53 +329,53 @@ const parserTests: Test[] = [
       `,
   },
 
-  // {
-  //   description: 'empty_line_while_0',
-  //   input: `
-  //     BEGIN MAIN
-  //       WHILE X < 1
+  {
+    description: 'empty_line_while_0',
+    input: `
+      BEGIN MAIN
+        WHILE X < 1
 
-  //           1
-  //       END
-  //     END
-  //     `,
-  // },
+            1
+        END
+      END
+      `,
+  },
 
-  // {
-  //   description: 'empty_line_while_1',
-  //   input: `
-  //     BEGIN MAIN
-  //       WHILE X < 1
-  //           1
+  {
+    description: 'empty_line_while_1',
+    input: `
+      BEGIN MAIN
+        WHILE X < 1
+            1
 
-  //       END
-  //     END
-  //     `,
-  // },
+        END
+      END
+      `,
+  },
 
-  // {
-  //   description: 'empty_line_until_0',
-  //   input: `
-  //     BEGIN MAIN
-  //       UNTIL X < 1
+  {
+    description: 'empty_line_until_0',
+    input: `
+      BEGIN MAIN
+        UNTIL X < 1
 
-  //           1
-  //       END
-  //     END
-  //     `,
-  // },
+            1
+        END
+      END
+      `,
+  },
 
-  // {
-  //   description: 'empty_line_until_1',
-  //   input: `
-  //     BEGIN MAIN
-  //       UNTIL X < 1
-  //           1
+  {
+    description: 'empty_line_until_1',
+    input: `
+      BEGIN MAIN
+        UNTIL X < 1
+            1
 
-  //       END
-  //     END
-  //     `,
-  // },
+        END
+      END
+      `,
+  },
 
   {
     description: 'long_expr',
@@ -415,35 +415,35 @@ const interpreterTests: Required<Test>[] = [
     output: 'BAGL',
   },
 
-  // {
-  //   description: 'gcf',
-  //   input: `
-  //     BEGIN MAIN
-  //         BEGIN MOD(A, B)
-  //             MOD <- A-B*(A/B)
-  //         END
-  //         BEGIN GCF(XD, YD)
-  //             X <- XD
-  //             Y <- YD
-  //             IF X < Y
-  //                 T <- X
-  //                 X <- Y
-  //                 Y <- T
-  //                 T <-
-  //             END
-  //             R <- Y
-  //             WHILE R > 0
-  //                 R <- MOD(X, Y)
-  //                 X <- Y
-  //                 Y <- R
-  //             END
-  //             GCF <- X
-  //         END
-  //         GCF(2*3*5*5*7,2*2*3*5)
-  //     END
-  //     `,
-  //   output: '30',
-  // },
+  {
+    description: 'gcf',
+    input: `
+      BEGIN MAIN
+          BEGIN MOD(A, B)
+              MOD <- A-B*(A/B)
+          END
+          BEGIN GCF(XD, YD)
+              X <- XD
+              Y <- YD
+              IF X < Y
+                  T <- X
+                  X <- Y
+                  Y <- T
+                  /* T <- */
+              END
+              R <- Y
+              WHILE R > 0
+                  R <- MOD(X, Y)
+                  X <- Y
+                  Y <- R
+              END
+              GCF <- X
+          END
+          GCF(2*3*5*5*7,2*2*3*5)
+      END
+      `,
+    output: '30',
+  },
 
   {
     description: 'no_args',
@@ -630,20 +630,20 @@ const interpreterTests: Required<Test>[] = [
     output: '0',
   },
 
-  // {
-  //   description: 'loopscope_0',
-  //   input: `
-  //     BEGIN MAIN
-  //       I <- 1
-  //       WHILE I < 10
-  //         I <- I + 1
-  //         R <- I
-  //       END
-  //       R
-  //     END
-  //     `,
-  //   output: '10',
-  // },
+  {
+    description: 'loopscope_0',
+    input: `
+      BEGIN MAIN
+        I <- 1
+        WHILE I < 10
+          I <- I + 1
+          R <- I
+        END
+        R
+      END
+      `,
+    output: '10',
+  },
 ]
 
 beforeEach(() => {

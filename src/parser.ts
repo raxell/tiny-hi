@@ -8,6 +8,12 @@ export type FunctionDefinitionNode = {
   formalParams: string[]
   statements: Statement[]
 }
+type LoopNode = {
+  type: 'Loop'
+  positive: boolean
+  predicate: PredicateNode
+  statements: Statement[]
+}
 type IfExpressionNode = {
   type: 'IfExpression'
   predicate: PredicateNode
@@ -42,6 +48,7 @@ export type Node =
   | ProgramNode
   | FunctionCallNode
   | FunctionDefinitionNode
+  | LoopNode
   | IfExpressionNode
   | PredicateNode
   | AssignmentNode
@@ -64,10 +71,11 @@ export type Node =
  * // using ID here is incorrect since params can't start with a DOT but keep this way for simplicity
  * functionDefinition: BEGIN name (LPAREN ID (COMMA ID)* RPAREN)? NEWLINE statementList END
  * statementList: (statement NEWLINE)+
- * statement: functionDefinition | funCall | assignment | expression | ifExpression
+ * statement: functionDefinition | funCall | assignment | expression | loop | ifExpression
  * statementList2: (statement2 NEWLINE)+
- * statement2: funCall | assignment | expression | ifExpression
- * ifExpression: IF predicate NEWLINE (statementList2) (ELSE NEWLINE stetementList2)? END
+ * statement2: funCall | assignment | expression | loop | ifExpression
+ * loop: (WHILE | UNTIL) predicate NEWLINE statementList2 END
+ * ifExpression: IF predicate NEWLINE statementList2 (ELSE NEWLINE stetementList2)? END
  * predicate: expression (LT | LTE | EQ | NEQ | GT | GTE) expression
  * assignment: ID ASSIGN expression
  * expression: operand ((PLUS | MINUS) operand)*
@@ -260,6 +268,18 @@ export const Parser = (input: string) => {
     return { type: 'Predicate', op, left, right } as const
   }
 
+  const loop = () => {
+    assertToken(currentToken, 'WHILE', 'UNTIL')
+    const positive = currentToken.type === 'WHILE'
+    consume(currentToken.type)
+    const predicateNode = predicate()
+    consume('NEWLINE')
+    const statements = statementList({ excludeFunctionDefinition: true })
+    consume('END')
+
+    return { type: 'Loop', positive, predicate: predicateNode, statements } as const
+  }
+
   const ifExpression = () => {
     consume('IF')
     const predicateNode = predicate()
@@ -293,8 +313,12 @@ export const Parser = (input: string) => {
       return functionDefinition()
     }
 
+    if (['WHILE', 'UNTIL'].includes(currentToken.type)) {
+      return loop()
+    }
+
     if (currentToken.type === 'IF') {
-      return { type: 'OutputExpression', expression: ifExpression() }
+      return ifExpression()
     }
 
     if (currentToken.type === 'ID' && lexer.peek().type === 'ASSIGN') {
@@ -328,7 +352,7 @@ export const Parser = (input: string) => {
     }
 
     // The last statement can't be an output expression for functions other than the program
-    if (!isProgramDefinition) {
+    if (!isProgramDefinition && !excludeFunctionDefinition) {
       const lastStatement = statements.slice(-1)[0]
 
       if (lastStatement.type === 'OutputExpression') {
