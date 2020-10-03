@@ -1,14 +1,11 @@
 import { FunctionCallNode, AssignmentNode, ProgramNode, Node } from './parser'
 import { globalScopeName, semanticAnalyzer } from './semanticAnalyzer'
 
-const isNode = <T>(value: unknown, type: Node['type']): value is T =>
-  typeof value === 'object' && value !== null && (value as Node).type === type
-
 const isVectorOfStrings = (vector: unknown[]): vector is string[] =>
-  vector.every((element) => typeof element === 'string')
+  Array.isArray(vector) && vector.every((element) => typeof element === 'string')
 
 const isVectorOfInts = (vector: unknown[]): vector is number[] =>
-  vector.every((element) => typeof element === 'number')
+  Array.isArray(vector) && vector.every((element) => typeof element === 'number')
 
 const maximumCallStack = 100
 
@@ -49,6 +46,7 @@ export const Interpreter = (ast: ProgramNode) => {
         const { formalParams, astNode } = scopes.get(node.name)!
         const stackFrame = { name: node.name, members: new Map() }
 
+        // set the parameters as variables in the stack frame by using the formal parameter as name and the actual parameter as value
         node.actualParams.forEach((value, index) => {
           stackFrame.members.set(formalParams[index], evaluate(value))
         })
@@ -57,20 +55,17 @@ export const Interpreter = (ast: ProgramNode) => {
         const result = evaluate(astNode)
         callStack.pop()
 
-        if (isNode<AssignmentNode>(result, 'Assignment')) {
-          return evaluate(result.right)
-        }
-
+        // the return of the function call can be undefined if the function does not return any value
         return result
 
       case 'FunctionDefinition':
-        return (
-          node.statements
-            // Functions definitions must be executed only when called
-            .filter((statement) => statement.type !== 'FunctionDefinition')
-            .map((statement) => evaluate(statement))
-            .slice(-1)[0]
-        )
+        node.statements
+          // Functions definitions must be executed only when called, skip execution now
+          .filter((statement) => statement.type !== 'FunctionDefinition')
+          .forEach((statement) => evaluate(statement))
+
+        // the return value of the function is the variable with its same name, if exists
+        return getCurrentStackFrame().members.get(node.name)
 
       case 'Predicate':
         const left = evaluate(node.left) as number[] | [string]
@@ -93,6 +88,7 @@ export const Interpreter = (ast: ProgramNode) => {
         )
 
       case 'Loop':
+        // UNTIL loop is handled by negating the while condition
         while (node.positive ? evaluate(node.predicate) : !evaluate(node.predicate)) {
           node.statements.forEach((statement) => evaluate(statement))
         }
@@ -106,30 +102,47 @@ export const Interpreter = (ast: ProgramNode) => {
         return node.elseStatements.map((statement) => evaluate(statement)).slice(-1)[0]
 
       case 'Assignment':
-        const value = evaluate(node.right)
         // Global variables are stored on the global stack frame
-        ;(node.global ? callStack[0] : getCurrentStackFrame()).members.set(node.left, value)
-        // Assignment is a valid return value for functions, so it is an expression
-        return value
+        const members = (node.global ? callStack[0] : getCurrentStackFrame()).members
+
+        // Deallocation of variable
+        if (node.right === null) {
+          members.delete(node.left)
+          return
+        }
+
+        members.set(node.left, evaluate(node.right))
+        return
 
       case 'OutputExpression':
         const vector = evaluate(node.expression) as number[] | [string]
 
+        // The vector can be undefined if it comes from a function with no return value, in
+        // that case don't print anything
+        if (vector === undefined) {
+          return
+        }
+
         if (isVectorOfInts(vector)) {
           console.log(vector.join(' '))
-          return vector
+          return
         }
 
         console.log(vector[0])
-        return vector
+        return
 
       case 'Var':
+        // Get the variable from the global stack frame if it is a global var
         const variableValue = (node.global ? callStack[0] : getCurrentStackFrame()).members.get(
           node.name,
         ) as number[] | [string]
 
+        // A variable can be undefined at runtime if has been deallocated or if it is a global variable not initialized yet
         if (variableValue === undefined) {
-          throw new Error(`Uninitialized global variable "${node.name}"`)
+          const message = node.name.startsWith('.')
+            ? `Uninitialized global variable "${node.name}"`
+            : `Undefined variable "${node.name}"`
+          throw new Error(message)
         }
 
         if (node.subscript) {
@@ -138,6 +151,7 @@ export const Interpreter = (ast: ProgramNode) => {
 
           const subscriptElements = (evaluate(node.subscript) as (number | string)[]).map(
             (value) => {
+              // Only integers can be used as index
               if (typeof value !== 'number') {
                 throw new Error(`Invalid subscript expression "${value}"`)
               }
@@ -166,6 +180,10 @@ export const Interpreter = (ast: ProgramNode) => {
       case 'Vector':
         // The parser can generate nested vectors, flatten them to execute operations as expected
         const vec = node.elements.map((element) => evaluate(element)).flat()
+
+        if (vec.some((element) => element === undefined)) {
+          throw new Error('Vector error, vector elements cannot be undefined')
+        }
 
         if (!isVectorOfInts(vec) && !isVectorOfStrings(vec)) {
           throw new Error('Vector error, vector elements must be of the same type')

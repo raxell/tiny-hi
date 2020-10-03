@@ -49,6 +49,14 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         return
 
       case 'Assignment':
+        if (node.right === null) {
+          // Global variables are kept in the global scope
+          if (node.global) {
+            // If it's a deallocation mark the global var as uninitialized
+            globalScope.variables.delete(node.left)
+          }
+          return
+        }
         // Global variables are kept in the global scope
         if (node.global) {
           globalScope.variables.add(node.left)
@@ -92,6 +100,7 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
     }
   }
 
+  // Perform some semantic checks: undefined varialbe, param reassignment, missing function params, etc...
   const evaluate = (node: Node) => {
     switch (node.type) {
       case 'FunctionDefinition':
@@ -101,6 +110,7 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
 
         // Global functions are kept in the global scope
         ;(node.global ? globalScope : currentScope).functions.add(node.name)
+        // Create a new scope for the current function
         const previousScope = currentScope
         currentScope = {
           formalParams: node.formalParams,
@@ -109,7 +119,9 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
           astNode: node,
         }
         scopes.set(node.name, currentScope)
+        // Populate the scope
         node.statements.forEach((statement) => evaluate(statement))
+        // End of function definition, back to the previous scope
         currentScope = previousScope
 
         return
@@ -136,7 +148,14 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
         }
 
         // Global variables are kept in the global scope
-        ;(node.global ? globalScope : currentScope).variables.add(node.left)
+        const scope = node.global ? globalScope : currentScope
+        // Remove the variable from the scope if the assignment is a deallocation
+        if (node.right === null) {
+          scope.variables.delete(node.left)
+          return
+        }
+
+        scope.variables.add(node.left)
         evaluate(node.right)
 
         return
@@ -202,6 +221,7 @@ export const semanticAnalyzer = (ast: ProgramNode) => {
     }
   }
 
+  // We need to populate the global store first or global variables will be marked as undefined
   buildGlobalScope(ast)
   evaluate(ast)
 

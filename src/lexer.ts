@@ -57,6 +57,7 @@ export const Lexer = (input: string) => {
     return token
   }
 
+  // Consumes the current character and advances the cursor position
   const consume = () => {
     pos += 1
     column += 1
@@ -67,6 +68,7 @@ export const Lexer = (input: string) => {
   // Looks at the next character without consuming it
   const peek = () => input[pos + 1]
 
+  // Consumes and returns an integer, optionally starting with minus sign
   const consumeInt = () => {
     let int = ''
 
@@ -83,6 +85,7 @@ export const Lexer = (input: string) => {
     return int
   }
 
+  // Consumes and returns an identifier, optionally starting with a dot
   const consumeId = () => {
     let id = ''
 
@@ -104,6 +107,7 @@ export const Lexer = (input: string) => {
     return id
   }
 
+  // Consumes and returns everything that is inside a couple of "
   const consumeString = () => {
     let string = ''
     consume()
@@ -118,6 +122,7 @@ export const Lexer = (input: string) => {
     return string
   }
 
+  // Skips spaces and newline chars. If a newline is found return it as it is a valid token
   const skipWhitespaces = () => {
     let newlineToken = null
 
@@ -139,6 +144,7 @@ export const Lexer = (input: string) => {
     return newlineToken
   }
 
+  // Skips a comment, newlines inside it are not treated as tokens
   const skipComment = () => {
     if (currentChar === '/' && peek() === '*') {
       consume()
@@ -174,14 +180,15 @@ export const Lexer = (input: string) => {
     peek() {
       const peekedToken = peekedTokens.slice(-1)[0]
 
+      // If we already peeked a token return it, don't peek another one
       if (peekedToken !== undefined) {
         return peekedToken
       }
 
       const nextToken = this.nextToken()
-      peekedTokens.push(nextToken)
       // `nextToken` also push into the stack, since we are not consuming the token let's remove it
       tokens.pop()
+      peekedTokens.push(nextToken)
 
       return nextToken
     },
@@ -194,18 +201,22 @@ export const Lexer = (input: string) => {
         return pushAndTop(peekedToken)
       }
 
+      // while there are still chars to scan...
       while (currentChar !== undefined) {
         const newlineToken = skipWhitespaces()
 
+        // If a newline char has been found while skipping whitespaces return it
         if (newlineToken !== null) {
           return pushAndTop(newlineToken)
         }
 
         if (currentChar === '/' && peek() === '*') {
           skipComment()
+          // after a comment there could be whitespaces, so let's check for them again
           continue
         }
 
+        // After skipping comments and whitespaces the input may be terminated
         if (currentChar === undefined) {
           break
         }
@@ -342,6 +353,7 @@ export const Lexer = (input: string) => {
         unexpectedCharacterError()
       }
 
+      // We reached the end of input
       return pushAndTop({ type: 'EOF', value: 'EOF' })
     },
   }

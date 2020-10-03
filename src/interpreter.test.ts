@@ -370,11 +370,11 @@ const tests: Test[] = [
         BEGIN FUNC
           .A <- 3
         END
-        FUNC()
+        FUNC() /* this does NOT produce output since the function does not return any value */
         .A
       END
     `,
-    output: '3\n3',
+    output: '3',
   },
 
   {
@@ -404,11 +404,11 @@ const tests: Test[] = [
         BEGIN SET_X
           .X <- 3
         END
-        SET_X()
+        SET_X() /* this does NOT produce output since the function does not return any value */
         A[.X]
       END
     `,
-    output: '3\nTT\nTT\n3\nX',
+    output: '3\nTT\nTT\nX',
   },
 
   // Strings
@@ -484,10 +484,10 @@ const tests: Test[] = [
             3
           END
         END
-        F()
+        F() /* this does NOT produce output since the function does not return any value */
       END
     `,
-    output: '3\n3',
+    output: '3',
   },
 
   {
@@ -562,9 +562,9 @@ const tests: Test[] = [
     input: `
       BEGIN PROG
         BEGIN F
-          7
+          7 /* the output comes from here */
         END
-        F()
+        F() /* not here */
       END
     `,
     output: '7',
@@ -575,9 +575,9 @@ const tests: Test[] = [
     input: `
       BEGIN PROG
         BEGIN F(X)
-          X
+          X /* the output comes from here */
         END
-        F(7)
+        F(7) /* not here */
       END
     `,
     output: '7',
@@ -627,11 +627,54 @@ const tests: Test[] = [
   },
 
   {
-    description: 'Assignment is a valid return expression',
+    description: 'Function return value',
     input: `
       BEGIN PROG
         BEGIN F
-          X <- 3
+          F <- 3
+        END
+        F() /* the output comes from here since the function returns a value */
+      END
+    `,
+    output: '3',
+  },
+
+  {
+    description: 'Function return value 2',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          F <- "world"
+        END
+        "hello " F() /* the output comes from here since the function returns a value */
+      END
+    `,
+    output: 'hello world',
+  },
+
+  {
+    description: 'Function partial return value',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          IF 1 > 2
+            F <- 3
+          END
+        END
+        F() /* this produces no output since the IF condition will never be met */
+      END
+    `,
+    output: '',
+  },
+
+  {
+    description: 'Function partial return value 2',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          IF 1 < 2
+            F <- 3
+          END
         END
         F()
       END
@@ -640,11 +683,37 @@ const tests: Test[] = [
   },
 
   {
+    description: 'Function with no return value in vector print',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          "world"
+        END
+        "hello " F()
+      END
+    `,
+    output: new Error('Vector error, vector elements cannot be undefined'),
+  },
+
+  {
+    description: 'Function with no return value in vector operation',
+    input: `
+      BEGIN PROG
+        BEGIN F
+          3
+        END
+        1 + 2 F()
+      END
+    `,
+    output: new Error('Vector error, vector elements cannot be undefined'),
+  },
+
+  {
     description: 'Assignment is not a valid output expression',
     input: `
       BEGIN PROG
         BEGIN F
-          X <- 3
+          F <- 3
         END
         Y <- F()
       END
@@ -652,17 +721,94 @@ const tests: Test[] = [
     output: '',
   },
 
+  // Various programs
   {
-    description: 'The last statement of a function is not an output expression',
+    description: 'Factorial',
     input: `
-      BEGIN PROG
-        BEGIN F
-          8
+      BEGIN FACTORIAL
+        BEGIN FACT(N)
+          IF N = 0
+            FACT <- 1
+          ELSE
+            FACT <- N * FACT(N - 1)
+          END
         END
-        X <- F()
+
+        FACT(5)
       END
     `,
-    output: '',
+    output: '120',
+  },
+
+  {
+    description: 'Factorial (with accumulator)',
+    input: `
+      BEGIN FACTORIAL
+        BEGIN FACT(N)
+          BEGIN FACT_(N, ACC)
+            IF N = 0
+              FACT_ <- ACC
+            ELSE
+              FACT_ <- FACT_(N - 1, ACC * N)
+            END
+          END
+          FACT <- FACT_(N, 1)
+        END
+
+        FACT(5)
+      END
+    `,
+    output: '120',
+  },
+
+  {
+    description: 'Fibonacci',
+    input: `
+      BEGIN FIBONACCI
+        BEGIN FIB(N)
+          IF N = 0
+            FIB <- 0
+          ELSE
+            IF N = 1
+              FIB <- 1
+            ELSE
+              FIB <- FIB(N - 1) + FIB(N - 2)
+            END
+          END
+        END
+
+        FIB(20)
+      END
+    `,
+    output: '6765',
+  },
+
+  {
+    description: 'Anagram',
+    input: `
+      BEGIN MAIN
+        BEGIN ANAGRAM(WORD)
+          LENGTH <- #WORD
+          I <- 1
+          ANAGRAM <- 1
+          WHILE I <= LENGTH / 2
+            IF ANAGRAM = 1
+              IF WORD[I] <> WORD[LENGTH + 1 - I]
+                ANAGRAM <- 0
+              END
+            END
+            I <- I + 1
+          END
+        END
+
+        ANAGRAM("A")
+        ANAGRAM("anna")
+        ANAGRAM("annna")
+        ANAGRAM("Anna")
+        ANAGRAM("text")
+      END
+    `,
+    output: '1\n1\n1\n0\n0',
   },
 
   // Undefined symbols
@@ -698,6 +844,20 @@ const tests: Test[] = [
       END
     `,
     output: new Error('Undefined variable "I"'),
+  },
+
+  {
+    description: 'Variable deallocation',
+    input: `
+      BEGIN MAIN
+        X <- 1
+        IF 1 < 2
+          X <-
+        END
+        X
+      END
+    `,
+    output: new Error('Undefined variable "X"'),
   },
 
   // I can access global vars everywhere before they're defined but I still need to define them
@@ -879,7 +1039,7 @@ const tests: Test[] = [
   },
 
   {
-    description: 'Maximum call stack',
+    description: 'Maximum call stack 2',
     input: `
       BEGIN PROG
         BEGIN A

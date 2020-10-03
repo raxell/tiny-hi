@@ -27,7 +27,12 @@ type PredicateNode = {
   left: Expression
   right: Expression
 }
-export type AssignmentNode = { type: 'Assignment'; global: boolean; left: string; right: Node }
+export type AssignmentNode = {
+  type: 'Assignment'
+  global: boolean
+  left: string
+  right: Node | null
+}
 type OutputExpressionNode = { type: 'OutputExpression'; expression: Statement }
 type Statement = Exclude<Node, { type: 'Program' }>
 type Expression = Exclude<Node, { type: 'Program' }>
@@ -62,6 +67,7 @@ export type Node =
 
 /**
  * Recursive descendant parser.
+ * It defines one function for each rule of the grammar and starts the parsing from the start symbol "program".
  *
  * Grammar
  * -------
@@ -77,7 +83,7 @@ export type Node =
  * loop: (WHILE | UNTIL) predicate NEWLINE statementList2 END
  * ifExpression: IF predicate NEWLINE statementList2 (ELSE NEWLINE stetementList2)? END
  * predicate: expression (LT | LTE | EQ | NEQ | GT | GTE) expression
- * assignment: ID ASSIGN expression
+ * assignment: ID ASSIGN (expression)?
  * expression: operand ((PLUS | MINUS) operand)*
  * operand: factor ((STAR | SLASH) factor)*
  * factor: TILDE vector | HASH vector | LPAREN expression RPAREN | vector
@@ -100,6 +106,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
   }
 
   const consume = (type: Token['type']) => {
+    // Ensures that the token being consumed is the one expected
     if (currentToken.type !== type) {
       assertToken(currentToken, type)
 
@@ -131,6 +138,8 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     consume('ID')
     consume('LPAREN')
 
+    // Function arguments are expressions, to check if there are some arguments we check
+    // if the current token represents the start of an expression
     if (isStartOfExpression(currentToken)) {
       actualParams.push(expression())
 
@@ -145,6 +154,8 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return { type: 'FunctionCall', global, name, actualParams } as const
   }
 
+  // A variable represents only the reference to an already defined variable, NOT the left
+  // hand side of an assignment
   const variable = () => {
     const name = currentToken.value
     const global = name.startsWith('.')
@@ -160,6 +171,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return { type: 'Var', global, name, subscript } as const
   }
 
+  // Parse an element (int, string, variable, function call, factor)
   const element = () => {
     if (currentToken.type === 'STRING') {
       const node = { type: 'String', value: currentToken.value } as const
@@ -186,6 +198,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return factor()
   }
 
+  // A vector is a list of at least one element
   const vector = (): VectorNode => {
     const elements = [element()]
 
@@ -196,6 +209,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return { type: 'Vector', elements } as const
   }
 
+  // A factor is a vector, an operation on a vector or an expression enclosed in parens
   var factor = (): Expression => {
     if (currentToken.type === 'TILDE') {
       consume('TILDE')
@@ -220,6 +234,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return vector()
   }
 
+  // An operand is the product/division of one or more factor
   const operand = () => {
     let node = factor()
 
@@ -233,6 +248,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return node
   }
 
+  // An expression is the sum/subtraction of one or more operand
   var expression = () => {
     let node = operand()
 
@@ -251,8 +267,9 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     const global = id.value.startsWith('.')
     consume('ID')
     consume('ASSIGN')
+    const right = currentToken.type === 'NEWLINE' ? null : expression()
 
-    return { type: 'Assignment', global, left: id.value, right: expression() }
+    return { type: 'Assignment', global, left: id.value, right }
   }
 
   const predicate = () => {
@@ -273,6 +290,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     consume(currentToken.type)
     const predicateNode = predicate()
     consume('NEWLINE')
+    // There can't be function definitions in loops
     const statements = statementList({ excludeFunctionDefinition: true })
     consume('END')
 
@@ -283,12 +301,14 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     consume('IF')
     const predicateNode = predicate()
     consume('NEWLINE')
+    // There can't be function definitions in ifs
     const thenStatements = statementList({ excludeFunctionDefinition: true })
     const elseStatements = []
 
     if (currentToken.type === 'ELSE') {
       consume('ELSE')
       consume('NEWLINE')
+      // There can't be function definitions in ifs
       elseStatements.push(...statementList({ excludeFunctionDefinition: true }))
     }
 
@@ -308,6 +328,7 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
   }: {
     excludeFunctionDefinition: boolean
   }): Statement => {
+    // Don't check for function definitions if we are in a loop/if
     if (!excludeFunctionDefinition && currentToken.type === 'BEGIN') {
       return functionDefinition()
     }
@@ -331,15 +352,11 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return { type: 'OutputExpression', expression: expression() }
   }
 
-  // The parameter `isProgramDefinition` si just for convenience, it avoids to define
-  // a new grammar rule with its corresponding function.
-  // Same for `excludeFunctionDefinition`, it just make this act also as the `statementList2`
-  // rule of the grammar.
+  // The parameter `excludeFunctionDefinition` is just for convenience, it just make
+  // this act also as the `statementList2` rule of the grammar.
   const statementList = ({
-    isProgramDefinition = false,
     excludeFunctionDefinition = false,
   }: {
-    isProgramDefinition?: boolean
     excludeFunctionDefinition?: boolean
   } = {}): Statement[] => {
     const statements = [statement({ excludeFunctionDefinition })]
@@ -348,16 +365,6 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     while (hasNextStatement(currentToken)) {
       statements.push(statement({ excludeFunctionDefinition }))
       consume('NEWLINE')
-    }
-
-    // The last statement can't be an output expression for functions other than the program
-    if (!isProgramDefinition && !excludeFunctionDefinition) {
-      const lastStatement = statements.slice(-1)[0]
-
-      if (lastStatement.type === 'OutputExpression') {
-        statements.pop()
-        statements.push(lastStatement.expression)
-      }
     }
 
     return statements
@@ -401,13 +408,13 @@ export const Parser = (lexer: ReturnType<typeof Lexer>) => {
     return { type: 'FunctionDefinition', global, name, formalParams, statements }
   }
 
-  // A program is a special case of a function definition, it has no parameters nor return expression
+  // A program is a special case of a function definition, it just has no parameters
   const programDefinition = (): FunctionDefinitionNode => {
     consume('BEGIN')
     const name = currentToken.value
     consume('ID')
     consume('NEWLINE')
-    const statements = statementList({ isProgramDefinition: true })
+    const statements = statementList()
     consume('END')
 
     // No need to define a new node, the semantic remains the same of a function definition

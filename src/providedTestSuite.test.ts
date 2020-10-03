@@ -86,14 +86,14 @@ const parserTests: Test[] = [
       `,
   },
 
-  // {
-  //   description: 'empty_assignement',
-  //   input: `
-  //     BEGIN PROG
-  //       X <-
-  //     END
-  //     `,
-  // },
+  {
+    description: 'empty_assignement',
+    input: `
+      BEGIN PROG
+        X <-
+      END
+      `,
+  },
 
   {
     description: 'exprstm',
@@ -430,7 +430,7 @@ const interpreterTests: Required<Test>[] = [
                   T <- X
                   X <- Y
                   Y <- T
-                  /* T <- */
+                  T <-
               END
               R <- Y
               WHILE R > 0
