@@ -5,8 +5,8 @@ import { Parser } from './parser'
 import { Interpreter } from './interpreter'
 import { semanticAnalyzer } from './semanticAnalyzer'
 
-const tokenize = (input: string) => {
-  const lexer = Lexer(input)
+const tokenize = (program: string) => {
+  const lexer = Lexer(program)
 
   while (lexer.nextToken().type !== 'EOF');
 
@@ -39,16 +39,18 @@ rl.on('close', () => {
     console.log(tokenize(input))
     console.log('')
 
+    const ast = Parser(Lexer(input))
+
     console.log('AST:')
-    console.log(util.inspect(Parser(input), { colors: true, depth: Infinity }))
+    console.log(util.inspect(ast, { colors: true, depth: Infinity }))
     console.log('')
 
     console.log('Scopes:')
-    console.log(semanticAnalyzer(Parser(input)))
+    console.log(semanticAnalyzer(ast))
     console.log('')
   }
 
   console.log('Output:')
 
-  Interpreter(Parser(input))
+  Interpreter(Parser(Lexer(input)))
 })

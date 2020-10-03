@@ -1,11 +1,14 @@
+import { Lexer } from './lexer'
 import { Parser } from './parser'
 
 test('Returns an AST', () => {
-  const ast = Parser(`
-    BEGIN PROG
-      1
-    END
-  `)
+  const ast = Parser(
+    Lexer(`
+      BEGIN PROG
+        1
+      END
+  `),
+  )
 
   expect(ast).toEqual({
     type: 'Program',
@@ -29,12 +32,14 @@ test('Returns an AST', () => {
 
 test('Global function parameter', () => {
   expect(() => {
-    Parser(`
-      BEGIN MAIN
-        BEGIN FUN(.X)
-          1
+    Parser(
+      Lexer(`
+        BEGIN MAIN
+          BEGIN FUN(.X)
+            1
+          END
         END
-      END
-    `)
+    `),
+    )
   }).toThrow(new Error('Unexpected global function parameter'))
 })

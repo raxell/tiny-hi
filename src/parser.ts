@@ -87,8 +87,7 @@ export type Node =
  * funCall: ID LPAREN (expression (COMMA expression)*)? RPAREN
  * ID: (DOT)? [A-Z][A-Z0-9_]
  */
-export const Parser = (input: string) => {
-  const lexer = Lexer(input)
+export const Parser = (lexer: ReturnType<typeof Lexer>) => {
   let currentToken: Token = lexer.nextToken()!
 
   const assertToken = (token: Token, ...types: Token['type'][]) => {

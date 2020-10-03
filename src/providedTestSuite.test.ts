@@ -1,3 +1,4 @@
+import { Lexer } from './lexer'
 import { Parser } from './parser'
 import { Interpreter } from './interpreter'
 
@@ -6,7 +7,7 @@ let output: string[] = []
 const spy = jest.spyOn(console, 'log').mockImplementation((message) => output.push(message))
 
 const execute = (program: string) => {
-  Interpreter(Parser(program))
+  Interpreter(Parser(Lexer(program)))
 }
 
 type Test = {
@@ -657,7 +658,7 @@ afterAll(() => {
 for (let test of parserTests) {
   it(test.description, () => {
     expect(() => {
-      Parser(test.input)
+      Parser(Lexer(test.input))
     }).not.toThrow()
   })
 }
